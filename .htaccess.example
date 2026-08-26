@@ -1,0 +1,24 @@
+# Esempio di protezione con HTTP Basic Auth (opzionale ma consigliata: senza
+# di questa l'editor e l'archivio sono raggiungibili da chiunque conosca l'URL).
+#
+# Per attivarla:
+#   1) genera un file .htpasswd nella stessa cartella:
+#        htpasswd -cB .htpasswd <utente>
+#      (rimuovi -c se il file esiste già e vuoi solo aggiungere un utente)
+#   2) rinomina questo file in .htaccess
+#   3) aggiorna AuthUserFile con il percorso assoluto reale
+#
+# Il login copre automaticamente sia le pagine che gli endpoint PHP: il
+# browser allega le credenziali ad ogni richiesta, incluse le fetch() usate
+# dall'editor/archivio, senza bisogno di alcun codice applicativo dedicato.
+
+AuthType Basic
+AuthName "Area riservata"
+AuthUserFile /percorso/assoluto/della/cartella/.htpasswd
+Require valid-user
+
+# Blocca comunque l'accesso diretto al database SQLite (contiene tutti gli
+# articoli salvati): anche con il login attivo, è una barriera in più.
+<FilesMatch "\.db$">
+    Require all denied
+</FilesMatch>

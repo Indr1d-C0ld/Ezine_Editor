@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Mia Ezine – Editor con Archivio</title>
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADoElEQVR4nO2bz0sbQRzFX2KsJpAaI1JUiKlRUER6qLQlYKBHDzlZ8CIIXjzkoAdz9R9oPetREMSDBRUKBfGgYNAW1PoDexASQ2maQmnqVsQkJj2tDXF3MzOZze4m+zkps3znvbff3Zlks4BJbWOp5GRvOzvzpMeGLy8rok3VSWgMl0KtQFQpytN4MbyD4FZMTdNy8AjDykOIFuZ5zVtWgloZl4K1G5g7QE/mAXY9TAHozbwIiy7qAPRqXoRWH1UAejcvQqOTOACjmBch1UsUgNHMi5DoLhmAUc2LlNKvGIDRzYso+eCyEzQysrsn0rM/PDeH/pERpsk/zszgdHVVcszt82Fia4uozjuvl+g4qd2iZAdUS+sXI+VLsgPKCSB0eAh7c7Pk2PnaGj5MTzPVfT4xgdezswCA9+PjiG5vM9Up7oKavwc8CKBa21+k2J/ZAYX/VPvZFyn0aXaA1gK0xgxA/KNWrn8R0a/ZAVoL0BozAK0FaI0ZAPeKeYXFxML+IMpi/S81rzQHJdwDyNzcyI7V2+3MdesdDqI5aOEewK0gyI4VmqClMLzbqyvmOsXwD0BBnLO9nbnu444Oojlo4R7Ar4sL2TGXxwOrzcZUt7mrCwCQvr7G32SSqYYU9wHw+uXFj6Mj+clsNnQMDlLXbGxqQmtvLwAgeXKCfC7HKu8e0S/3Dojv7SmuBL3BIHXNnuHh+875tr/PrE0K7gH8iccR3dmRHR8YHYXb5yOuV+9wwD81BQDIZbM4XlkpW2MhqmyEPs3Py3aB1WbDm6UltPT0lKzT6HJhZHERzrY2AMDXjQ0IiQRXrQ+ue14fi4fCYbwMhWTHc9ksztfXcbG5ieTxMW5SKeQyGTS6XGjp7oY3EMCzsTE0OJ0AgFQshqVgUHGZJaXwfqdaAJa6OgyFw3gxOVnWDhAAfp6dYSMUQioW4yFNOQCA75cjHr8fr0IhePx+6iCERAJflpfxeWEBd5kMFz3Fqx3bokxBPBJBPBKBy+vF00AATwYG0NrXB7vbjQanE48cDmTTaaQFAbeCgN/RKJKnp/h+cIDL3V3k7+5U1ad6ACKpWAyHnFqYJ5KrQKV+qFxpiJ8Oyx1sZOT8mF+IKA1WSxco+SjZAUYPoZR+okvAqCGQ6Ca+BxgtBFK9VDdBo4RAo5N6FdB7CLT6mJZBvYbAoot5H6C3EFj1cDGh5aP1ck8El52gVt3AY17zvUGexYqp2TdH5dDju8M1zz/rTU5pTXeKhgAAAABJRU5ErkJggg==">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #2c2c2c;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .editor-container { display: flex; gap: 20px; flex-wrap: wrap; }
+    .controls {
+      flex: 1.2; min-width: 340px; background: #f0ede8; padding: 1rem;
+      border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .preview {
+      flex: 2.5; background: #e6e3db; padding: 10px; border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto;
+    }
+    .preview .newspaper {
+      margin: 0 auto; background: #fef9ef; padding: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    .control-group {
+      margin-bottom: 1.5rem; border-bottom: 1px solid #aaa; padding-bottom: 1rem;
+    }
+    .control-group h3 { margin-top: 0; color: #8b1f1f; }
+    label { font-weight: bold; display: block; margin-top: 8px; }
+    input, textarea, select {
+      width: 100%; padding: 6px; margin-top: 4px; font-family: monospace;
+    }
+    button {
+      background: #8b1f1f; color: white; border: none; padding: 6px 12px;
+      margin-top: 8px; cursor: pointer; border-radius: 4px; margin-right: 6px;
+    }
+    button.secondary { background: #555; }
+    .inline-buttons { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+    hr { margin: 15px 0; }
+    .status { background: #cfd8dc; padding: 4px; font-size: 0.7rem; text-align: center; }
+    .fullwidth-extra, .fakead-extra { display: none; margin-top: 0.5rem; }
+    .checkbox-inline { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .checkbox-inline label { margin-top: 0; }
+    .checkbox-inline input { width: auto; margin-top: 0; }
+  </style>
+
+  <style id="newspaper-css">
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #e6e3db; font-family: 'Courier New', Courier, 'Lucida Sans Typewriter', 'Lucida Typewriter', monospace; line-height: 1.35; color: #111; padding: 1.5rem; }
+    .newspaper { max-width: 1100px; margin: 0 auto; background: #fef9ef; padding: 2rem 1.5rem; box-shadow: 0 0 15px rgba(0,0,0,0.2); border: 1px solid #222; }
+    .header { text-align: center; border-bottom: 4px double #111; margin-bottom: 1.2rem; padding-bottom: 0.8rem; }
+    .title-wrapper { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 0.2rem; }
+    .header-logo { height: 60px; width: auto; filter: grayscale(0.1); }
+    .title { font-size: 4.2rem; font-weight: 800; letter-spacing: -1px; font-family: 'Georgia', 'Clarendon', 'Times New Roman', serif; text-transform: uppercase; line-height: 1.1; text-shadow: 0.02em 0.02em 0px rgba(0,0,0,0.08), -0.02em -0.01em 0px rgba(0,0,0,0.05), 0.04em 0.03em 0px rgba(0,0,0,0.02); transform: rotate(0.2deg); }
+    .title .underground { color: #8b1f1f; display: inline-block; }
+    .title .observer { color: #000000; display: inline-block; }
+    .motto { font-style: italic; font-size: 0.7rem; letter-spacing: 0px; font-family: 'Courier New', Courier, monospace; margin-top: 0.2rem; color: #444; }
+    .subhead { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; border-top: 1px solid #333; border-bottom: 1px solid #333; display: inline-block; padding: 0.2rem 0; margin-top: 0.2rem; font-family: 'Courier New', Courier, monospace; }
+    .edition-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      font-family: monospace;
+      margin-top: 0.5rem;
+      border-top: 1px solid #888;
+      padding-top: 0.5rem;
+    }
+    .edition-info span:first-child { flex: 1; text-align: left; }
+    .edition-info span:last-child { flex: 1; text-align: right; }
+    .edition-info span:not(:first-child):not(:last-child) { flex: 1; text-align: center; }
+    article { margin-bottom: 1rem; }
+    .full-width { margin-bottom: 1.5rem; border-bottom: 1px dashed #aaa; padding-bottom: 0.8rem; }
+    .fullwidth-columns {
+      column-gap: 1.8rem;
+      column-rule: 1px solid #ccc;
+      font-size: 0.82rem; /* stessa dimensione del corpo normale */
+    }
+    .fullwidth-columns p {
+      break-inside: avoid;
+      margin-bottom: 0.6rem;
+    }
+    h2 { font-size: 1.5rem; font-weight: 800; text-transform: uppercase; border-left: 5px solid #c00; padding-left: 0.5rem; margin: 0.7rem 0 0.4rem 0; }
+    .kicker { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #a00; }
+    .byline { font-size: 0.7rem; font-weight: bold; border-bottom: 1px dotted #aaa; margin-bottom: 0.4rem; display: inline-block; }
+    p { font-size: 0.82rem; text-align: justify; margin-bottom: 0.6rem; }
+    .feature-box { border: 2px solid #111; padding: 0.8rem; background: #f4efdf; margin: 1rem 0; font-family: 'Courier New', Courier, monospace; }
+    .feature-box h3 { font-size: 1rem; font-weight: 800; text-transform: uppercase; background: #111; color: #fef9ef; display: inline-block; padding: 0.1rem 0.4rem; letter-spacing: 1px; margin-bottom: 0.5rem; }
+    hr { margin: 1rem 0; border: none; border-top: 1px solid #222; }
+    .fake-ad { font-size: 0.7rem; text-align: center; border: 1px dashed #444; padding: 0.4rem; margin: 0.6rem 0; background: #e9e2cf; }
+    .fake-ad-colored { background: #d4b8b8 !important; border: 1px solid #8b1f1f !important; color: #2c0a0a; }
+    footer { margin-top: 2rem; border-top: 2px solid #111; padding-top: 0.8rem; font-size: 0.65rem; text-align: center; font-family: monospace; }
+    @media screen { 
+      .columns-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.2rem 0; } 
+      .columns-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; } 
+    }
+    @media print { 
+      body { background: white; padding: 0; margin: 0; } 
+      .newspaper { max-width: 100%; padding: 0.8rem; box-shadow: none; background: white; } 
+      .columns-2, .columns-3 { display: block; column-count: 2; column-gap: 1.8rem; column-rule: 1px solid #aaa; } 
+      .columns-3 { column-count: 3; } 
+      article, .fake-ad { break-inside: avoid; page-break-inside: avoid; } 
+      .feature-box, .header, footer, hr { break-inside: avoid; } 
+      .title { transform: none; } 
+    }
+    .article-img { max-width: 100%; margin: 0.5rem 0; border: 1px solid #aaa; display: block; }
+    .float-left { float: left; margin: 0.5rem 1rem 0.5rem 0; max-width: 45%; }
+    .float-right { float: right; margin: 0.5rem 0 0.5rem 1rem; max-width: 45%; }
+    .clearfix::after { content: ""; clear: both; display: table; }
+    .img-woodcut { filter: grayscale(1) contrast(300%) brightness(90%) !important; image-rendering: crisp-edges; }
+    .img-bitmap { filter: grayscale(1) contrast(200%) brightness(80%) !important; image-rendering: pixelated; }
+    .caption { font-size: 0.65rem; font-style: italic; text-align: center; margin-top: -0.2rem; margin-bottom: 0.5rem; color: #444; }
+    .image-wrapper { margin: 0.5rem 0; display: inline-block; width: 100%; }
+    .float-left .image-wrapper, .float-right .image-wrapper { display: block; width: auto; }
+  </style>
+</head>
+<body>
+<div class="editor-container">
+  <div class="controls">
+    <h2>🖋️ Editor – La Mia Ezine</h2>
+    <div class="status" id="saveStatus">✅ Modifiche automaticamente salvate</div>
+    <div class="status" id="editModeStatus" style="background:#e9e2cf; display:none;">✏️ Modalità modifica attiva</div>
+
+    <div class="control-group">
+      <h3>📅 Dati di testata</h3>
+      <label>Anno</label><input type="text" id="anno" value="I">
+      <label>Numero</label><input type="text" id="numero" value="0">
+      <label>Data</label><input type="text" id="data" value="">
+      <label>Colore "Underground"</label><input type="color" id="titleColor" value="#8b1f1f">
+    </div>
+
+    <div class="control-group">
+      <h3>📚 Archivio e Salvataggio</h3>
+      <label>Titolo uscita (per salvare)</label><input type="text" id="issueTitle" placeholder="Es. Numero 1 - Giugno 2026">
+      <button id="saveIssueBtn">💾 Salva nuova uscita</button>
+      <button id="updateIssueBtn" style="display:none;">🔄 Aggiorna uscita corrente</button>
+      <button id="archiveBtn">📂 Apri archivio</button>
+      <div style="font-size:0.7rem; margin-top:5px;">Le uscite vengono salvate in database SQLite e consultabili nell'archivio.</div>
+    </div>
+
+    <div class="control-group">
+      <h3>➕ Aggiungi / Modifica contenuto</h3>
+      <select id="targetSection">
+        <option value="fullWidth">Articolo FULL-WIDTH (sopra colonne)</option>
+        <option value="colLeft">Prima pagina - SINISTRA</option>
+        <option value="colRight">Prima pagina - DESTRA</option>
+        <option value="straight">Straight from the Man</option>
+        <option value="roundup">Roundup (nuova voce)</option>
+        <option value="letters">Lettere (nuova voce)</option>
+        <option value="fight">Fight the Power (nuova voce)</option>
+        <option value="fakeAd">Consiglio (con sfondo)</option>
+        <option value="nextIssue">Anticipazione (footer)</option>
+        <option value="rubric">Rubrica fissa (footer)</option>
+      </select>
+      <label>Titolo (o intestazione)</label><input type="text" id="newTitle" placeholder="Titolo articolo">
+      
+      <!-- CAMPI FULL-WIDTH -->
+      <div id="fullwidthExtra" class="fullwidth-extra">
+        <label>Dimensione titolo (full-width)</label>
+        <select id="fwTitleSize">
+          <option value="2rem">2rem (normale)</option><option value="2.5rem">2.5rem (medio)</option>
+          <option value="3rem">3rem (grande)</option><option value="3.5rem">3.5rem (extra grande)</option>
+          <option value="4rem">4rem (molto grande)</option><option value="4.5rem">4.5rem (enorme)</option>
+          <option value="5rem">5rem (gigante)</option><option value="5.5rem">5.5rem (extra gigante)</option>
+          <option value="6rem">6rem (maxi)</option>
+        </select>
+        <label>Allineamento titolo</label>
+        <select id="fwTitleAlign">
+          <option value="left">Sinistra</option><option value="center">Centrato</option><option value="right">Destra</option>
+        </select>
+        <label>Allineamento testo</label>
+        <select id="fwTextAlign">
+          <option value="justify">Giustificato (giornale)</option><option value="left">Sinistra (normale)</option>
+        </select>
+        <label>Numero colonne per il corpo</label>
+        <select id="fwColumns">
+          <option value="1">1 colonna (normale)</option>
+          <option value="2">2 colonne</option>
+          <option value="3">3 colonne</option>
+        </select>
+      </div>
+      
+      <label>Testo</label><textarea id="newText" rows="3" placeholder="Contenuto..."></textarea>
+      <label>Scegli icona/kicker (opzionale)</label>
+      <select id="kickerSelect">
+        <option value="">-- Nessuna --</option>
+        <option value="🔍 ESCLUSIVO">🔍 ESCLUSIVO</option>
+        <option value="🛸 CONTROLLO MENTALE">🛸 CONTROLLO MENTALE</option>
+        <option value="⚔️ GUERRA PSICHICA">⚔️ GUERRA PSICHICA</option>
+        <option value="💻 TECNO-DENUNCIA">💻 TECNO-DENUNCIA</option>
+        <option value="🌍 AMBIENTE IN PERICOLO">🌍 AMBIENTE IN PERICOLO</option>
+        <option value="🏥 SALUTE PUBBLICA">🏥 SALUTE PUBBLICA</option>
+        <option value="📢 DENUNCIA">📢 DENUNCIA</option>
+        <option value="✊ AZIONE DIRETTA">✊ AZIONE DIRETTA</option>
+        <option value="🎭 SATIRA">🎭 SATIRA</option>
+        <option value="🔎 MISTERO">🔎 MISTERO</option>
+        <option value="📡 ONDE PIRATA">📡 ONDE PIRATA</option>
+        <option value="📻 SPETTRO RADIO">📻 SPETTRO RADIO</option>
+      </select>
+      <label>Kicker personalizzato</label><input type="text" id="newKicker" placeholder="Es. 🔥 FALSO ALLARME">
+      <label>Byline</label><input type="text" id="newByline">
+      <label>URL immagine (opzionale)</label><input type="text" id="newImage" placeholder="https://... .jpg">
+      <label>Allineamento orizzontale immagine</label>
+      <select id="imageFloat">
+        <option value="none">Nessuno (centrato)</option>
+        <option value="left">A sinistra (testo a fianco)</option>
+        <option value="right">A destra (testo a fianco)</option>
+      </select>
+      <label>Posizione verticale</label>
+      <select id="imagePosition">
+        <option value="top">In cima (tra titolo e testo)</option>
+        <option value="middle">In mezzo (dentro il testo)</option>
+        <option value="bottom">In basso (dopo il testo)</option>
+      </select>
+      <label>Didascalia (opzionale)</label><input type="text" id="imageCaption" placeholder="Es. Foto: manifestazione">
+      <label>Stile immagine</label>
+      <select id="imageStyle">
+        <option value="normal">Normale</option>
+        <option value="woodcut">Xilografia</option>
+        <option value="bitmap">Bitmap rumorosa</option>
+      </select>
+      
+      <!-- Sezione checkbox per sfondo colorato: visibile solo se la sezione corrente è fakeAd -->
+      <div id="fakeadExtra" class="fakead-extra">
+        <div class="checkbox-inline">
+          <input type="checkbox" id="coloredBg">
+          <label>Sfondo colorato (fake-ad style)</label>
+        </div>
+      </div>
+
+      <div>
+        <button id="addContentBtn">➕ Aggiungi / Aggiorna</button>
+        <button id="cancelEditBtn" class="secondary" style="display:none;">❌ Annulla modifica</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <h3>🗂️ Gestione sezioni</h3>
+      <button id="resetAllBtn" class="secondary">⟳ Resetta TUTTO</button>
+      <button id="printBtn" class="secondary">🖨️ Stampa / PDF</button>
+      <button id="exportBtn" class="secondary">💾 Esporta HTML</button>
+    </div>
+  </div>
+
+  <div class="preview">
+    <div id="newspaperPreview" class="newspaper"></div>
+  </div>
+</div>
+
+<script>
+  let newspaperData = {
+    header: { anno: "I", numero: "0", data: "", titleColor: "#8b1f1f" },
+    fullWidth: null,
+    colLeft: [],
+    colRight: [],
+    straightFromTheMan: { text: "<strong>Ignazio “Naz” Marra</strong> – La tua playlist non ti appartiene. Se ti ritrovi a canticchiare tormentoni prodotti in serie da algoritmi svedesi, potresti essere bersaglio di un attacco armonico indotto. Smettetela di ballare, ragazzi. Iniziate a dubitare." },
+    roundup: [],
+    letters: [],
+    fight: [],
+    fakeAd: { text: "⚠️ CONSIGLIO DELL’OSSERVATORE: guardate solo programmi con rating IMDb sotto 5.0 – proteggete i vostri occhi e la vostra sanità mentale.", enabled: true, colored: false },
+    nextIssue: "Le miniere di litio in Sardegna e il patto segreto con le EV car",
+    fixedRubric: "“Unravel the Mystery” – Il triangolo delle Bermuda spiegato (non come pensi)"
+  };
+  let editing = { active: false, section: null, index: null };
+  let currentIssueId = null;
+
+  function getCurrentItalianDate() {
+    const d = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    let formatted = d.toLocaleDateString('it-IT', options);
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }
+
+  function initExampleData() {
+    newspaperData.fullWidth = { 
+      type: "article", title: "SPECIALE: L'EDITOR ORA SUPPORTA ARTICOLI FULL-WIDTH", 
+      text: "Questa è una dimostrazione di un articolo che occupa l'intera larghezza della pagina, ideale per notizie di prima plana o editoriali. Puoi aggiungerlo, modificarlo o eliminarlo usando i pulsanti sottostanti. Il testo può essere suddiviso in più colonne, come nei veri giornali. Prova a selezionare 2 o 3 colonne dal pannello di controllo. Le immagini possono essere posizionate sopra, dentro o sotto le colonne, e il titolo rimane a tutta larghezza.", 
+      kicker: "🔥 IN PRIMO PIANO", byline: "Redazione", image: "", imageFloat: "none", 
+      imagePosition: "top", imageCaption: "", imageStyle: "normal",
+      fwTitleSize: "3rem", fwTitleAlign: "center", fwTextAlign: "justify", fwColumns: "2"
+    };
+    newspaperData.colLeft = [
+      { type: "article", title: "I tuoi dati nel WC dell'aeroporto?", text: "Nuove prove suggeriscono che i bagni pubblici degli aeroporti internazionali siano dotati di aspiratori silenziosi per il campionamento del DNA. Un ex tecnico TSA ha rivelato l’esistenza del programma “Project Soggy Swab”.", kicker: "🔍 ESCLUSIVO", byline: "Redazione Osservatore", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" },
+      { type: "article", title: "MORTE PER BALLOTTAGGIO", text: "Un candidato sindaco a Bogotà è stato trascinato per 3 km dietro un carro dei rifiuti dopo aver promesso “trasparenza nei contratti dei rifiuti”.", kicker: "", byline: "dalla nostra inviata", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" }
+    ];
+    newspaperData.colRight = [
+      { type: "article", title: "Allarme: serie TV “di qualità” causano strabismo", text: "I nostri Alpha-scanner hanno rilevato array di particelle subliminali nei segnali 4K di produzioni come Severance e The White Lotus.", kicker: "🛸 CONTROLLO MENTALE", byline: "", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" },
+      { type: "article", title: "ALLARME MUCCHE PAZZE", text: "L’Europa ci attacca con la malattia della mucca pazza? Un allevatore dell’Iowa accusa la Francia.", kicker: "", byline: "", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" }
+    ];
+    newspaperData.roundup = [
+      { text: "<strong>CLONAZIONE ALIENA</strong> – Embrioni ibridi in Nebraska." },
+      { text: "<strong>GUERRA PSICHICA</strong> – Bounty hunter psichici per giornalisti." }
+    ];
+    newspaperData.letters = [
+      { text: "<em>“Ho scollegato l’antenna dopo il vostro articolo sul 5G”</em> – Lettore di Catanzaro" }
+    ];
+    newspaperData.fight = [
+      { text: "Distribuisci questo PDF, stampalo e appendilo nei luoghi di ritrovo." }
+    ];
+    newspaperData.fakeAd = { text: "⚠️ CONSIGLIO: guardate solo programmi con rating IMDb sotto 5.0", enabled: true, colored: false };
+    newspaperData.nextIssue = "Le miniere di litio in Sardegna e il patto segreto con le EV car";
+    newspaperData.fixedRubric = "“Unravel the Mystery” – Il triangolo delle Bermuda";
+  }
+
+  function saveAndRender() {
+    newspaperData.header.anno = document.getElementById('anno').value;
+    newspaperData.header.numero = document.getElementById('numero').value;
+    newspaperData.header.data = document.getElementById('data').value;
+    newspaperData.header.titleColor = document.getElementById('titleColor').value;
+    localStorage.setItem('undergroundObserver', JSON.stringify(newspaperData));
+    renderNewspaper(false);
+    document.getElementById('saveStatus').innerText = '✅ Salvato ' + new Date().toLocaleTimeString();
+  }
+
+  function getImageClass(style) {
+    if (style === 'woodcut') return 'img-woodcut';
+    if (style === 'bitmap') return 'img-bitmap';
+    return '';
+  }
+
+  function renderImageBlock(art) {
+    if (!art.image) return '';
+    const imgClass = getImageClass(art.imageStyle);
+    const floatClass = (art.imageFloat === 'left' || art.imageFloat === 'right') ? `float-${art.imageFloat}` : '';
+    const captionHtml = art.imageCaption ? `<div class="caption">${art.imageCaption}</div>` : '';
+    return `<div class="image-wrapper ${floatClass}"><img class="article-img ${imgClass}" src="${art.image}" alt="illustrazione">${captionHtml}</div>`;
+  }
+
+  function insertImageInline(text, imgBlock) {
+    if (!imgBlock) return text;
+    const mid = Math.floor(text.length / 2);
+    let pos = text.lastIndexOf(' ', mid);
+    if (pos === -1) pos = mid;
+    return text.slice(0, pos) + ' ' + imgBlock + ' ' + text.slice(pos);
+  }
+
+  function renderArticleContent(art, isFullWidth = false) {
+    if (!art) return '';
+    let html = '';
+    if (art.kicker) html += `<div class="kicker">${art.kicker}</div>`;
+    if (art.title) {
+      if (isFullWidth && art.fwTitleSize) {
+        html += `<h2 style="font-size: ${art.fwTitleSize}; text-align: ${art.fwTitleAlign || 'center'}; border-left: none; padding-left: 0;">${art.title}</h2>`;
+      } else {
+        html += `<h2>${art.title}</h2>`;
+      }
+    }
+    if (art.byline) html += `<div class="byline">${art.byline}</div>`;
+    
+    const imgBlock = renderImageBlock(art);
+    const pos = art.imagePosition || 'top';
+    const isFloated = (art.imageFloat === 'left' || art.imageFloat === 'right');
+    const textAlignStyle = (isFullWidth && art.fwTextAlign) ? `style="text-align: ${art.fwTextAlign};"` : '';
+    
+    if (isFullWidth && art.fwColumns && art.fwColumns !== '1') {
+      const columnCount = art.fwColumns;
+      if (pos === 'top') {
+        if (imgBlock) html += imgBlock;
+        html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
+      } else if (pos === 'bottom') {
+        html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
+        if (imgBlock) html += imgBlock;
+      } else { // middle
+        if (imgBlock) {
+          const textWithImage = insertImageInline(art.text, imgBlock);
+          html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${textWithImage.replace(/\n/g, '<br>')}</div>`;
+        } else {
+          html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
+        }
+      }
+    } else {
+      if (pos === 'top') {
+        if (imgBlock) html += imgBlock;
+        html += `<p ${textAlignStyle}>${art.text}</p>`;
+      } else if (pos === 'bottom') {
+        html += `<p ${textAlignStyle}>${art.text}</p>`;
+        if (imgBlock) html += imgBlock;
+      } else { // middle
+        if (imgBlock) {
+          if (isFloated) {
+            const textWithImage = insertImageInline(art.text, imgBlock);
+            html += `<p ${textAlignStyle}>${textWithImage}</p>`;
+          } else {
+            const parts = art.text.split(/\n\s*\n/);
+            if (parts.length > 1) {
+              parts.splice(1, 0, imgBlock);
+              html += `<p ${textAlignStyle}>${parts.join('</p><p ' + textAlignStyle + '>')}</p>`;
+            } else {
+              const mid = Math.floor(art.text.length / 2);
+              let pos = art.text.lastIndexOf(' ', mid);
+              if (pos === -1) pos = mid;
+              html += `<p ${textAlignStyle}>${art.text.slice(0, pos)}</p>${imgBlock}<p ${textAlignStyle}>${art.text.slice(pos)}</p>`;
+            }
+          }
+        } else {
+          html += `<p ${textAlignStyle}>${art.text}</p>`;
+        }
+      }
+      if (isFloated && (pos === 'top' || pos === 'middle')) html += `<div class="clearfix"></div>`;
+    }
+    return html;
+  }
+
+  function renderNewspaper(clean = false) {
+    const d = newspaperData;
+    const h = d.header;
+    const titleColor = h.titleColor;
+    let html = `
+      <div class="header">
+        <div class="title-wrapper">
+          <img class="header-logo" src="UO LOGO.png" alt="UO Logo" onerror="this.style.display='none'">
+          <div class="title">
+            <span class="underground" style="color: ${titleColor};">UNDERGROUND</span><span class="observer"> OBSERVER</span>
+          </div>
+        </div>
+        <div class="motto">“Il tuo giornale, a modo tuo”</div>
+        <div class="subhead">INDIPENDENTE • LIBERO • PERSONALE</div>
+        <div class="edition-info">
+          <span>Anno ${h.anno} – Numero ${h.numero}</span>
+          <span>${h.data}</span>
+          <span>Libero</span>
+        </div>
+        <div class="edition-info">
+          <span>La Mia Ezine © ${new Date().getFullYear()}</span>
+        </div>
+      </div>`;
+    
+    if (d.fullWidth) {
+      html += `<div class="full-width">${renderArticleContent(d.fullWidth, true)}`;
+      if (!clean) {
+        html += `<div class="inline-buttons"><button class="edit-fullwidth">✏️ Modifica</button><button class="delete-fullwidth">🗑️ Elimina</button></div>`;
+      }
+      html += `</div>`;
+    } else if (!clean) {
+      html += `<div class="full-width"><em>(Nessun articolo full-width. Aggiungine uno dal pannello.)</em><div class="inline-buttons"><button class="add-fullwidth-hint">➕ Aggiungi full-width</button></div></div>`;
+    }
+
+    html += `<div class="columns-2"><div>`;
+    d.colLeft.forEach((art, idx) => {
+      html += `<article>${renderArticleContent(art)}`;
+      if (!clean) {
+        html += `<div class="inline-buttons"><button class="edit-col" data-section="colLeft" data-index="${idx}">✏️ Modifica</button><button class="delete-col" data-section="colLeft" data-index="${idx}">🗑️ Elimina</button>`;
+        if (idx > 0) html += `<button class="move-up" data-section="colLeft" data-index="${idx}">⬆️ Su</button>`;
+        if (idx < d.colLeft.length-1) html += `<button class="move-down" data-section="colLeft" data-index="${idx}">⬇️ Giù</button>`;
+        html += `</div>`;
+      }
+      html += `</article>`;
+    });
+    html += `</div><div>`;
+    d.colRight.forEach((art, idx) => {
+      html += `<article>${renderArticleContent(art)}`;
+      if (!clean) {
+        html += `<div class="inline-buttons"><button class="edit-col" data-section="colRight" data-index="${idx}">✏️ Modifica</button><button class="delete-col" data-section="colRight" data-index="${idx}">🗑️ Elimina</button>`;
+        if (idx > 0) html += `<button class="move-up" data-section="colRight" data-index="${idx}">⬆️ Su</button>`;
+        if (idx < d.colRight.length-1) html += `<button class="move-down" data-section="colRight" data-index="${idx}">⬇️ Giù</button>`;
+        html += `</div>`;
+      }
+      html += `</article>`;
+    });
+    html += `</div></div>`;
+
+    if (d.fakeAd && d.fakeAd.enabled) {
+      const coloredClass = d.fakeAd.colored ? 'fake-ad-colored' : '';
+      html += `<div class="fake-ad ${coloredClass}">${d.fakeAd.text}`;
+      if (!clean) html += `<div class="inline-buttons"><button class="edit-fakead">✏️ Modifica</button><button class="delete-fakead">🗑️ Nascondi</button></div>`;
+      html += `</div>`;
+    } else if (!clean) {
+      html += `<div class="fake-ad"><em>Consiglio disabilitato</em><div class="inline-buttons"><button class="enable-fakead">➕ Attiva Consiglio</button></div></div>`;
+    }
+
+    html += `<div class="feature-box"><h3>✊ STRAIGHT FROM THE MAN</h3><p>${d.straightFromTheMan.text}</p>`;
+    if (!clean) html += `<div class="inline-buttons"><button class="edit-straight">✏️ Modifica</button><button class="reset-straight">⟳ Ripristina default</button></div>`;
+    html += `</div><hr>`;
+
+    html += `<div class="columns-3">`;
+    html += `<div><h2>🌍 ROUNDUP</h2><div>`;
+    d.roundup.forEach((item, idx) => {
+      html += `<p>${item.text}`;
+      if (!clean) html += ` <button class="edit-roundup" data-index="${idx}">✏️</button> <button class="delete-roundup" data-index="${idx}">🗑️</button>`;
+      html += `</p>`;
+    });
+    if (!clean) html += `<button class="add-roundup">+ Aggiungi voce</button>`;
+    html += `</div></div>`;
+    html += `<div><h2>📬 LETTERE</h2><div>`;
+    d.letters.forEach((item, idx) => {
+      html += `<p>${item.text}`;
+      if (!clean) html += ` <button class="edit-letter" data-index="${idx}">✏️</button> <button class="delete-letter" data-index="${idx}">🗑️</button>`;
+      html += `</p>`;
+    });
+    if (!clean) html += `<button class="add-letter">+ Aggiungi lettera</button>`;
+    html += `</div></div>`;
+    html += `<div><h2>⚡ FIGHT THE POWER</h2><div>`;
+    d.fight.forEach((item, idx) => {
+      html += `<p>${item.text}`;
+      if (!clean) html += ` <button class="edit-fight" data-index="${idx}">✏️</button> <button class="delete-fight" data-index="${idx}">🗑️</button>`;
+      html += `</p>`;
+    });
+    if (!clean) html += `<button class="add-fight">+ Aggiungi azione</button>`;
+    html += `</div></div></div>`;
+
+    html += `<footer><div class="edition-info">`;
+    html += `<span>➤ PROSSIMO NUMERO: ${d.nextIssue}`;
+    if (!clean) html += ` <button class="edit-nextissue">✏️</button> <button class="delete-nextissue">🗑️</button>`;
+    html += `</span>`;
+    html += `<span>➤ RUBRICA FISSA: ${d.fixedRubric}`;
+    if (!clean) html += ` <button class="edit-rubric">✏️</button> <button class="delete-rubric">🗑️</button>`;
+    html += `</span></div>`;
+    html += `<p style="margin-top:0.8rem;">La Mia Ezine non si assume responsabilità per le allucinazioni uditive e visive derivanti dalla lettura ad alta voce di questo foglio. Vietato fotocopiare per fini commerciali – incoraggiato fotocopiare per fini sovversivi.</p></footer>`;
+
+    if (!clean) {
+      document.getElementById('newspaperPreview').innerHTML = html;
+      attachDynamicEvents();
+    } else return html;
+  }
+
+  function attachDynamicEvents() {
+    document.querySelectorAll('.edit-fullwidth').forEach(btn => { btn.onclick = () => loadForEdit('fullWidth', null); });
+    document.querySelectorAll('.delete-fullwidth').forEach(btn => { btn.onclick = () => { newspaperData.fullWidth = null; saveAndRender(); }; });
+    document.querySelectorAll('.add-fullwidth-hint').forEach(btn => { btn.onclick = () => { document.getElementById('targetSection').value = 'fullWidth'; toggleExtraSections(); }; });
+    document.querySelectorAll('.edit-col').forEach(btn => { btn.onclick = () => loadForEdit(btn.dataset.section, parseInt(btn.dataset.index)); });
+    document.querySelectorAll('.delete-col').forEach(btn => { btn.onclick = () => { const s=btn.dataset.section, i=parseInt(btn.dataset.index); newspaperData[s].splice(i,1); saveAndRender(); }; });
+    document.querySelectorAll('.move-up').forEach(btn => { btn.onclick = () => { const s=btn.dataset.section, i=parseInt(btn.dataset.index); if(i>0){ [newspaperData[s][i-1], newspaperData[s][i]] = [newspaperData[s][i], newspaperData[s][i-1]]; saveAndRender(); } }; });
+    document.querySelectorAll('.move-down').forEach(btn => { btn.onclick = () => { const s=btn.dataset.section, i=parseInt(btn.dataset.index); if(i<newspaperData[s].length-1){ [newspaperData[s][i+1], newspaperData[s][i]] = [newspaperData[s][i], newspaperData[s][i+1]]; saveAndRender(); } }; });
+    document.querySelectorAll('.edit-fakead').forEach(btn => { btn.onclick = () => loadForEdit('fakeAd', null); });
+    document.querySelectorAll('.delete-fakead').forEach(btn => { btn.onclick = () => { newspaperData.fakeAd.enabled = false; saveAndRender(); }; });
+    document.querySelectorAll('.enable-fakead').forEach(btn => { btn.onclick = () => { newspaperData.fakeAd.enabled = true; if(!newspaperData.fakeAd.text) newspaperData.fakeAd.text = "⚠️ CONSIGLIO: difendete i vostri occhi dalla TV di qualità"; saveAndRender(); }; });
+    document.querySelectorAll('.edit-straight').forEach(btn => { btn.onclick = () => loadForEdit('straight', null); });
+    document.querySelectorAll('.reset-straight').forEach(btn => { btn.onclick = () => { newspaperData.straightFromTheMan.text = "<strong>Ignazio “Naz” Marra</strong> – La tua playlist non ti appartiene... Smettetela di ballare, ragazzi. Iniziate a dubitare."; saveAndRender(); }; });
+    document.querySelectorAll('.edit-roundup').forEach(btn => { btn.onclick = () => loadForEdit('roundup', parseInt(btn.dataset.index)); });
+    document.querySelectorAll('.delete-roundup').forEach(btn => { btn.onclick = () => { const i=parseInt(btn.dataset.index); newspaperData.roundup.splice(i,1); saveAndRender(); }; });
+    document.querySelectorAll('.add-roundup').forEach(btn => { btn.onclick = () => { let txt=prompt("Nuova voce per ROUNDUP:"); if(txt) { newspaperData.roundup.push({text: txt}); saveAndRender(); } }; });
+    document.querySelectorAll('.edit-letter').forEach(btn => { btn.onclick = () => loadForEdit('letters', parseInt(btn.dataset.index)); });
+    document.querySelectorAll('.delete-letter').forEach(btn => { btn.onclick = () => { const i=parseInt(btn.dataset.index); newspaperData.letters.splice(i,1); saveAndRender(); }; });
+    document.querySelectorAll('.add-letter').forEach(btn => { btn.onclick = () => { let txt=prompt("Nuova lettera:"); if(txt) { newspaperData.letters.push({text: txt}); saveAndRender(); } }; });
+    document.querySelectorAll('.edit-fight').forEach(btn => { btn.onclick = () => loadForEdit('fight', parseInt(btn.dataset.index)); });
+    document.querySelectorAll('.delete-fight').forEach(btn => { btn.onclick = () => { const i=parseInt(btn.dataset.index); newspaperData.fight.splice(i,1); saveAndRender(); }; });
+    document.querySelectorAll('.add-fight').forEach(btn => { btn.onclick = () => { let txt=prompt("Nuova azione:"); if(txt) { newspaperData.fight.push({text: txt}); saveAndRender(); } }; });
+    document.querySelectorAll('.edit-nextissue').forEach(btn => { btn.onclick = () => loadForEdit('nextIssue', null); });
+    document.querySelectorAll('.delete-nextissue').forEach(btn => { btn.onclick = () => { newspaperData.nextIssue = ""; saveAndRender(); }; });
+    document.querySelectorAll('.edit-rubric').forEach(btn => { btn.onclick = () => loadForEdit('rubric', null); });
+    document.querySelectorAll('.delete-rubric').forEach(btn => { btn.onclick = () => { newspaperData.fixedRubric = ""; saveAndRender(); }; });
+  }
+
+  function loadForEdit(section, index) {
+    let art = null;
+    if (section === 'fullWidth') art = newspaperData.fullWidth;
+    else if (section === 'colLeft' || section === 'colRight') art = newspaperData[section][index];
+    else if (section === 'straight') art = { text: newspaperData.straightFromTheMan.text };
+    else if (section === 'fakeAd') art = { text: newspaperData.fakeAd.text, colored: newspaperData.fakeAd.colored };
+    else if (section === 'roundup') art = { text: newspaperData.roundup[index].text };
+    else if (section === 'letters') art = { text: newspaperData.letters[index].text };
+    else if (section === 'fight') art = { text: newspaperData.fight[index].text };
+    else if (section === 'nextIssue') art = { text: newspaperData.nextIssue };
+    else if (section === 'rubric') art = { text: newspaperData.fixedRubric };
+    if (!art) return;
+    document.getElementById('targetSection').value = section;
+    document.getElementById('newTitle').value = art.title || '';
+    document.getElementById('newText').value = art.text || '';
+    document.getElementById('newKicker').value = art.kicker || '';
+    document.getElementById('kickerSelect').value = '';
+    document.getElementById('newByline').value = art.byline || '';
+    document.getElementById('newImage').value = art.image || '';
+    document.getElementById('imageFloat').value = art.imageFloat || 'none';
+    document.getElementById('imagePosition').value = art.imagePosition || 'top';
+    document.getElementById('imageCaption').value = art.imageCaption || '';
+    document.getElementById('imageStyle').value = art.imageStyle || 'normal';
+    if (section === 'fakeAd') {
+      document.getElementById('coloredBg').checked = art.colored || false;
+    } else {
+      document.getElementById('coloredBg').checked = false;
+    }
+    if (section === 'fullWidth') {
+      document.getElementById('fwTitleSize').value = art.fwTitleSize || '3rem';
+      document.getElementById('fwTitleAlign').value = art.fwTitleAlign || 'center';
+      document.getElementById('fwTextAlign').value = art.fwTextAlign || 'justify';
+      document.getElementById('fwColumns').value = art.fwColumns || '2';
+    } else {
+      document.getElementById('fwTitleSize').value = '3rem';
+      document.getElementById('fwTitleAlign').value = 'center';
+      document.getElementById('fwTextAlign').value = 'justify';
+      document.getElementById('fwColumns').value = '2';
+    }
+    toggleExtraSections();
+    editing = { active: true, section: section, index: index };
+    document.getElementById('editModeStatus').style.display = 'block';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    document.getElementById('addContentBtn').innerHTML = '✏️ Aggiorna';
+    document.getElementById('targetSection').disabled = (section !== 'fullWidth' && section !== 'colLeft' && section !== 'colRight');
+  }
+
+  function toggleExtraSections() {
+    const section = document.getElementById('targetSection').value;
+    const fullDiv = document.getElementById('fullwidthExtra');
+    const fakeDiv = document.getElementById('fakeadExtra');
+    fullDiv.style.display = (section === 'fullWidth') ? 'block' : 'none';
+    fakeDiv.style.display = (section === 'fakeAd') ? 'block' : 'none';
+  }
+
+  function cancelEdit() {
+    editing = { active: false, section: null, index: null };
+    document.getElementById('editModeStatus').style.display = 'none';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('addContentBtn').innerHTML = '➕ Aggiungi / Aggiorna';
+    document.getElementById('targetSection').disabled = false;
+    document.getElementById('newTitle').value = '';
+    document.getElementById('newText').value = '';
+    document.getElementById('newKicker').value = '';
+    document.getElementById('kickerSelect').value = '';
+    document.getElementById('newByline').value = '';
+    document.getElementById('newImage').value = '';
+    document.getElementById('imageFloat').value = 'none';
+    document.getElementById('imagePosition').value = 'top';
+    document.getElementById('imageCaption').value = '';
+    document.getElementById('imageStyle').value = 'normal';
+    document.getElementById('coloredBg').checked = false;
+    document.getElementById('fwTitleSize').value = '3rem';
+    document.getElementById('fwTitleAlign').value = 'center';
+    document.getElementById('fwTextAlign').value = 'justify';
+    document.getElementById('fwColumns').value = '2';
+    toggleExtraSections();
+  }
+
+  function addOrUpdate() {
+    const section = document.getElementById('targetSection').value;
+    const title = document.getElementById('newTitle').value;
+    let text = document.getElementById('newText').value;
+    let kicker = document.getElementById('newKicker').value;
+    const ks = document.getElementById('kickerSelect').value;
+    if (ks && !kicker) kicker = ks;
+    const byline = document.getElementById('newByline').value;
+    const image = document.getElementById('newImage').value;
+    const imageFloat = document.getElementById('imageFloat').value;
+    const imagePosition = document.getElementById('imagePosition').value;
+    const imageCaption = document.getElementById('imageCaption').value;
+    const imageStyle = document.getElementById('imageStyle').value;
+    const colored = document.getElementById('coloredBg').checked;
+    const fwTitleSize = document.getElementById('fwTitleSize').value;
+    const fwTitleAlign = document.getElementById('fwTitleAlign').value;
+    const fwTextAlign = document.getElementById('fwTextAlign').value;
+    const fwColumns = document.getElementById('fwColumns').value;
+
+    if (!text && section !== 'straight' && section !== 'fakeAd' && section !== 'nextIssue' && section !== 'rubric') {
+      alert("Inserisci almeno il testo.");
+      return;
+    }
+
+    if (editing.active) {
+      if (section === 'fullWidth') {
+        newspaperData.fullWidth = { type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle, fwTitleSize, fwTitleAlign, fwTextAlign, fwColumns };
+      } else if (section === 'colLeft' || section === 'colRight') {
+        newspaperData[section][editing.index] = { type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle };
+      } else if (section === 'straight') {
+        newspaperData.straightFromTheMan.text = text;
+      } else if (section === 'fakeAd') {
+        newspaperData.fakeAd.text = text;
+        newspaperData.fakeAd.enabled = true;
+        newspaperData.fakeAd.colored = colored;
+      } else if (section === 'roundup') {
+        newspaperData.roundup[editing.index] = { text: text };
+      } else if (section === 'letters') {
+        newspaperData.letters[editing.index] = { text: text };
+      } else if (section === 'fight') {
+        newspaperData.fight[editing.index] = { text: text };
+      } else if (section === 'nextIssue') {
+        newspaperData.nextIssue = text;
+      } else if (section === 'rubric') {
+        newspaperData.fixedRubric = text;
+      }
+      cancelEdit();
+      saveAndRender();
+      return;
+    }
+
+    switch(section) {
+      case 'fullWidth':
+        newspaperData.fullWidth = { type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle, fwTitleSize, fwTitleAlign, fwTextAlign, fwColumns };
+        break;
+      case 'colLeft':
+        newspaperData.colLeft.push({ type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle });
+        break;
+      case 'colRight':
+        newspaperData.colRight.push({ type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle });
+        break;
+      case 'straight':
+        newspaperData.straightFromTheMan.text = text;
+        break;
+      case 'roundup':
+        newspaperData.roundup.push({ text: text });
+        break;
+      case 'letters':
+        newspaperData.letters.push({ text: text });
+        break;
+      case 'fight':
+        newspaperData.fight.push({ text: text });
+        break;
+      case 'fakeAd':
+        newspaperData.fakeAd = { text: text, enabled: true, colored: colored };
+        break;
+      case 'nextIssue':
+        newspaperData.nextIssue = text;
+        break;
+      case 'rubric':
+        newspaperData.fixedRubric = text;
+        break;
+    }
+    cancelEdit();
+    saveAndRender();
+  }
+
+  function resetAll() {
+    if (confirm("Resettare TUTTI i contenuti?")) {
+      initExampleData();
+      document.getElementById('anno').value = "I";
+      document.getElementById('numero').value = "0";
+      document.getElementById('data').value = getCurrentItalianDate();
+      document.getElementById('titleColor').value = "#8b1f1f";
+      cancelEdit();
+      saveAndRender();
+    }
+  }
+
+  function exportHTML() {
+    const cleanHTML = renderNewspaper(true);
+    const css = document.getElementById('newspaper-css').innerHTML;
+    const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>La Mia Ezine</title><style>${css}</style></head><body><div class="newspaper">${cleanHTML}</div></body></html>`], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'underground_observer.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function printPDF() {
+    const w = window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stampa</title><style>${document.getElementById('newspaper-css').innerHTML}</style><style>body{margin:0;padding:1rem;background:white;}</style></head><body><div class="newspaper">${renderNewspaper(true)}</div></body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  async function saveNewIssue() {
+    let title = document.getElementById('issueTitle').value.trim();
+    if (!title) title = `Uscita del ${new Date().toLocaleString()}`;
+    const newspaperContent = getCurrentNewspaperData();
+    const payload = { title: title, date: document.getElementById('data').value, content: newspaperContent };
+    try {
+      const res = await fetch('save_issue.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const result = await res.json();
+      if (result.success) { alert(`Uscita salvata con ID ${result.id}`); document.getElementById('issueTitle').value = ''; }
+      else alert('Errore: ' + (result.error || 'Errore sconosciuto'));
+    } catch(e) { alert('Errore di connessione al server: ' + e.message); }
+  }
+
+  async function updateCurrentIssue() {
+    if (!currentIssueId) return;
+    const title = document.getElementById('issueTitle').value.trim() || `Uscita aggiornata`;
+    const newspaperContent = getCurrentNewspaperData();
+    const payload = { id: currentIssueId, title: title, date: document.getElementById('data').value, content: newspaperContent };
+    try {
+      const res = await fetch('update_issue.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const result = await res.json();
+      if (result.success) { alert('Uscita aggiornata con successo'); currentIssueId = null; document.getElementById('updateIssueBtn').style.display = 'none'; document.getElementById('issueTitle').value = ''; }
+      else alert('Errore: ' + result.error);
+    } catch(e) { alert('Errore di connessione: ' + e.message); }
+  }
+
+  async function loadIssueFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+      try {
+        const res = await fetch(`load_issue.php?id=${editId}`);
+        const data = await res.json();
+        if (data.content) {
+          newspaperData = data.content;
+          document.getElementById('anno').value = newspaperData.header.anno;
+          document.getElementById('numero').value = newspaperData.header.numero;
+          document.getElementById('data').value = newspaperData.header.data;
+          document.getElementById('titleColor').value = newspaperData.header.titleColor;
+          document.getElementById('issueTitle').value = data.title || '';
+          currentIssueId = data.id;
+          document.getElementById('updateIssueBtn').style.display = 'inline-block';
+          renderNewspaper(false);
+          alert(`Uscita "${data.title}" caricata. Puoi modificarla e poi aggiornarla.`);
+        } else alert('Uscita non trovata');
+      } catch(e) { alert('Errore nel caricamento: ' + e.message); }
+    }
+  }
+
+  function getCurrentNewspaperData() {
+    newspaperData.header.anno = document.getElementById('anno').value;
+    newspaperData.header.numero = document.getElementById('numero').value;
+    newspaperData.header.data = document.getElementById('data').value;
+    newspaperData.header.titleColor = document.getElementById('titleColor').value;
+    return JSON.parse(JSON.stringify(newspaperData));
+  }
+
+  document.getElementById('addContentBtn').onclick = addOrUpdate;
+  document.getElementById('cancelEditBtn').onclick = cancelEdit;
+  document.getElementById('resetAllBtn').onclick = resetAll;
+  document.getElementById('exportBtn').onclick = exportHTML;
+  document.getElementById('printBtn').onclick = printPDF;
+  document.getElementById('saveIssueBtn').onclick = saveNewIssue;
+  document.getElementById('updateIssueBtn').onclick = updateCurrentIssue;
+  document.getElementById('archiveBtn').onclick = () => { window.location.href = 'archivio.php'; };
+  document.getElementById('targetSection').addEventListener('change', toggleExtraSections);
+  ['anno','numero','data','titleColor'].forEach(id => document.getElementById(id).addEventListener('input', () => saveAndRender()));
+
+  function loadFromStorage() {
+    const saved = localStorage.getItem('undergroundObserver');
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        newspaperData = p;
+        document.getElementById('anno').value = newspaperData.header.anno;
+        document.getElementById('numero').value = newspaperData.header.numero;
+        document.getElementById('data').value = newspaperData.header.data || getCurrentItalianDate();
+        document.getElementById('titleColor').value = newspaperData.header.titleColor || "#8b1f1f";
+      } catch(e) {}
+    } else {
+      initExampleData();
+      document.getElementById('data').value = getCurrentItalianDate();
+    }
+    newspaperData.header.data = document.getElementById('data').value;
+    renderNewspaper(false);
+  }
+
+  loadFromStorage();
+  loadIssueFromUrl();
+  toggleExtraSections();
+</script>
+</body>
+</html>

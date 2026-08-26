@@ -1,0 +1,15 @@
+# === Dati reali (generati a runtime, mai da versionare) ===
+ezine.db
+ezine.db-shm
+ezine.db-wal
+
+# === Autenticazione locale (se attivi Basic Auth seguendo .htaccess.example) ===
+.htaccess
+.htpasswd
+
+# === Asset personale opzionale (se ne aggiungi uno tuo con lo stesso nome) ===
+UO LOGO.png
+
+# === OS / editor ===
+.DS_Store
+*.swp
