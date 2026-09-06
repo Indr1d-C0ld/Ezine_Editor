@@ -163,6 +163,9 @@
                 <div class="edition-info">
                     <span>La Mia Ezine © ${new Date().getFullYear()}</span>
                 </div>
+                <div class="edition-info">
+                    <span style="text-align:left;">📧 email@esempio.it</span>
+                </div>
             </div>`;
 
         function getImageClass(style) {
