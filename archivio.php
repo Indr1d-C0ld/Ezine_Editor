@@ -161,10 +161,8 @@
                     <span>Libero</span>
                 </div>
                 <div class="edition-info">
+                    <span>📧 email@esempio.it</span>
                     <span>La Mia Ezine © ${new Date().getFullYear()}</span>
-                </div>
-                <div class="edition-info">
-                    <span style="text-align:left;">📧 email@esempio.it</span>
                 </div>
             </div>`;
 
