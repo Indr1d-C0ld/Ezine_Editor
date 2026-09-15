@@ -269,6 +269,20 @@
   let editing = { active: false, section: null, index: null };
   let currentIssueId = null;
 
+  // Il contenuto può arrivare da localStorage o dal database e non avere tutte
+  // le sezioni (versioni precedenti, dati salvati a mano). Senza questi valori
+  // di default il render lancia un TypeError e l'anteprima resta vuota.
+  function contenutoCompleto(c) {
+    const d = Object.assign({ fullWidth: null, nextIssue: '', fixedRubric: '' }, c || {});
+    d.header = Object.assign({ anno: 'I', numero: '0', data: '', titleColor: '#8b1f1f' }, d.header);
+    d.straightFromTheMan = Object.assign({ text: '' }, d.straightFromTheMan);
+    d.fakeAd = Object.assign({ text: '', enabled: false, colored: false }, d.fakeAd);
+    for (const k of ['colLeft', 'colRight', 'roundup', 'letters', 'fight']) {
+      if (!Array.isArray(d[k])) d[k] = [];
+    }
+    return d;
+  }
+
   function getCurrentItalianDate() {
     const d = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -725,8 +739,36 @@
     }
   }
 
-  function exportHTML() {
-    const cleanHTML = renderNewspaper(true);
+  // Incorpora il logo come data URI, ridimensionato: l'originale pesa ~2 MB e
+  // nell'intestazione è alto 60px. Senza questo passaggio il file esportato
+  // conserva un percorso relativo e, aperto fuori dalla cartella del sito,
+  // perde la testata senza segnalare nulla.
+  async function logoDataUri(altezzaPx = 120) {
+    try {
+      const img = await new Promise((risolvi, rifiuta) => {
+        const i = new Image();
+        i.onload = () => risolvi(i);
+        i.onerror = () => rifiuta(new Error('logo non disponibile'));
+        i.src = 'UO LOGO.png';
+      });
+      const scala = altezzaPx / img.naturalHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scala);
+      canvas.height = altezzaPx;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/png');
+    } catch (e) {
+      return null; // il markup ha già onerror: senza logo il resto della pagina regge
+    }
+  }
+
+  async function conLogoIncorporato(html) {
+    const logo = await logoDataUri();
+    return logo ? html.replace('src="UO LOGO.png"', `src="${logo}"`) : html;
+  }
+
+  async function exportHTML() {
+    const cleanHTML = await conLogoIncorporato(renderNewspaper(true));
     const css = document.getElementById('newspaper-css').innerHTML;
     const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>La Mia Ezine</title><style>${css}</style></head><body><div class="newspaper">${cleanHTML}</div></body></html>`], {type:'text/html'});
     const a = document.createElement('a');
@@ -736,9 +778,10 @@
     URL.revokeObjectURL(a.href);
   }
 
-  function printPDF() {
+  async function printPDF() {
+    const cleanHTML = await conLogoIncorporato(renderNewspaper(true));
     const w = window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stampa</title><style>${document.getElementById('newspaper-css').innerHTML}</style><style>body{margin:0;padding:1rem;background:white;}</style></head><body><div class="newspaper">${renderNewspaper(true)}</div></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stampa</title><style>${document.getElementById('newspaper-css').innerHTML}</style><style>body{margin:0;padding:1rem;background:white;}</style></head><body><div class="newspaper">${cleanHTML}</div></body></html>`);
     w.document.close();
     w.focus();
     w.print();
@@ -780,7 +823,7 @@
         const res = await fetch(`load_issue.php?id=${editId}`);
         const data = await res.json();
         if (data.content) {
-          newspaperData = data.content;
+          newspaperData = contenutoCompleto(data.content);
           document.getElementById('anno').value = newspaperData.header.anno;
           document.getElementById('numero').value = newspaperData.header.numero;
           document.getElementById('data').value = newspaperData.header.data;
@@ -819,7 +862,7 @@
     if (saved) {
       try {
         const p = JSON.parse(saved);
-        newspaperData = p;
+        newspaperData = contenutoCompleto(p);
         document.getElementById('anno').value = newspaperData.header.anno;
         document.getElementById('numero').value = newspaperData.header.numero;
         document.getElementById('data').value = newspaperData.header.data || getCurrentItalianDate();

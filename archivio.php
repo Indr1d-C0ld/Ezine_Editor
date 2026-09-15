@@ -83,7 +83,7 @@
 
     <div class="search">
         <input type="text" id="searchTitle" placeholder="Cerca nel titolo...">
-        <input type="text" id="searchKeyword" placeholder="Parola chiave (titolo o data)">
+        <input type="text" id="searchKeyword" placeholder="Parola chiave (nel testo degli articoli)">
         <button id="searchBtn">🔍 Cerca</button>
         <button id="resetBtn">⟳ Mostra tutti</button>
     </div>
@@ -139,7 +139,25 @@
         }
     }
 
+    // Un'uscita salvata potrebbe non avere tutte le sezioni (contenuto scritto da
+    // una versione precedente, o inviato direttamente all'API). Senza questi
+    // valori di default il render lancia un TypeError e la finestra non si apre
+    // affatto, senza alcun messaggio.
+    function contenutoCompleto(c) {
+        const d = Object.assign({
+            fullWidth: null, nextIssue: '', fixedRubric: ''
+        }, c || {});
+        d.header = Object.assign({ anno: '', numero: '', data: '', titleColor: '#8b1f1f' }, d.header);
+        d.straightFromTheMan = Object.assign({ text: '' }, d.straightFromTheMan);
+        d.fakeAd = Object.assign({ text: '', enabled: false, colored: false }, d.fakeAd);
+        for (const k of ['colLeft', 'colRight', 'roundup', 'letters', 'fight']) {
+            if (!Array.isArray(d[k])) d[k] = [];
+        }
+        return d;
+    }
+
     function renderFullNewspaper(data) {
+        data = contenutoCompleto(data);
         let html = '';
 
         const h = data.header;
@@ -291,26 +309,35 @@
     }
 
     async function viewIssue(id) {
-        const res = await fetch(`load_issue.php?id=${id}`);
-        const data = await res.json();
-        if (data.error) { alert(data.error); return; }
-        const fullHtml = renderFullNewspaper(data.content);
-        const css = document.getElementById('newspaper-css').innerHTML;
-        const win = window.open('', '_blank');
-        win.document.write(`<!DOCTYPE html><html><head><title>Uscita ${id} – La Mia Ezine</title><style>${css}</style></head><body><div class="newspaper">${fullHtml}</div></body></html>`);
-        win.document.close();
+        try {
+            const res = await fetch(`load_issue.php?id=${id}`);
+            const data = await res.json();
+            if (data.error) { alert(data.error); return; }
+            const fullHtml = renderFullNewspaper(data.content);
+            const css = document.getElementById('newspaper-css').innerHTML;
+            const win = window.open('', '_blank');
+            win.document.write(`<!DOCTYPE html><html><head><title>Uscita ${id} – La Mia Ezine</title><style>${css}</style></head><body><div class="newspaper">${fullHtml}</div></body></html>`);
+            win.document.close();
+        } catch (e) {
+            alert(`Impossibile aprire l'uscita ${id}: ${e.message}`);
+        }
     }
 
     async function editIssue(id) { window.location.href = `index.html?edit=${id}`; }
     async function printIssue(id) {
-        const res = await fetch(`load_issue.php?id=${id}`);
-        const data = await res.json();
-        const fullHtml = renderFullNewspaper(data.content);
-        const css = document.getElementById('newspaper-css').innerHTML;
-        const win = window.open('', '_blank');
-        win.document.write(`<!DOCTYPE html><html><head><title>Stampa uscita ${id}</title><style>${css}</style><style>body{margin:0;padding:1rem;background:white;}</style></head><body><div class="newspaper">${fullHtml}</div></body></html>`);
-        win.document.close();
-        win.print();
+        try {
+            const res = await fetch(`load_issue.php?id=${id}`);
+            const data = await res.json();
+            if (data.error) { alert(data.error); return; }
+            const fullHtml = renderFullNewspaper(data.content);
+            const css = document.getElementById('newspaper-css').innerHTML;
+            const win = window.open('', '_blank');
+            win.document.write(`<!DOCTYPE html><html><head><title>Stampa uscita ${id}</title><style>${css}</style><style>body{margin:0;padding:1rem;background:white;}</style></head><body><div class="newspaper">${fullHtml}</div></body></html>`);
+            win.document.close();
+            win.print();
+        } catch (e) {
+            alert(`Impossibile stampare l'uscita ${id}: ${e.message}`);
+        }
     }
     async function deleteIssue(id) {
         if (confirm(`Eliminare l'uscita ID ${id}?`)) {
@@ -366,12 +393,23 @@
         }
     }
 
-    document.getElementById('searchBtn').onclick = () => {
+    document.getElementById('searchBtn').onclick = async () => {
         const titleFilter = document.getElementById('searchTitle').value.toLowerCase();
-        const keyword = document.getElementById('searchKeyword').value.toLowerCase();
+        const keyword = document.getElementById('searchKeyword').value.trim();
         let filtered = allIssues;
+        if (keyword) {
+            // La ricerca nel testo è lato server: il client non ha i contenuti,
+            // perché stats.php non restituisce la colonna 'content'.
+            try {
+                const res = await fetch('search_issues.php?q=' + encodeURIComponent(keyword));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                filtered = await res.json();
+            } catch (e) {
+                alert('Ricerca non riuscita: ' + e.message);
+                return;
+            }
+        }
         if (titleFilter) filtered = filtered.filter(i => i.title.toLowerCase().includes(titleFilter));
-        if (keyword) filtered = filtered.filter(i => JSON.stringify(i).toLowerCase().includes(keyword));
         renderTable(filtered);
     };
     document.getElementById('resetBtn').onclick = () => { document.getElementById('searchTitle').value = ''; document.getElementById('searchKeyword').value = ''; renderTable(allIssues); };
