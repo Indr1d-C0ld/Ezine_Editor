@@ -59,7 +59,7 @@ Tutto il contenuto di un numero (articoli, testi, immagini in base64, impostazio
 - **Editor** (`index.html`): compila testata (anno, numero, data, colore), aggiungi articoli nelle varie sezioni, guarda l'anteprima aggiornarsi in tempo reale. "Salva nuova uscita" scrive nel database; se stai modificando un numero esistente (aperto dall'archivio) usa "Aggiorna" invece di creare un duplicato.
 - **Archivio** (`archivio.php`): cerca per titolo, consulta la nuvola delle parole più frequenti, visualizza/stampa/elimina ogni numero.
 
-> **Nota sulle funzioni dell'archivio.** La ricerca filtra sull'elenco dei numeri (titolo, data, conteggi), non sul testo degli articoli: il campo "parola chiave" non esegue una ricerca full-text. Le parole della nuvola sono indicative e non sono cliccabili per filtrare. Entrambe le funzioni richiedono una ricerca lato server per essere complete — contributi benvenuti.
+> **Nota sulla ricerca.** Il filtro lavora sull'elenco dei numeri (titolo e data), non sul testo degli articoli: non è una ricerca full-text, che richiederebbe una query lato server. La nuvola conta invece le parole effettivamente scritte negli articoli (titoli, testi, occhielli e firme), ma serve a dare un'idea dei temi ricorrenti: le parole non sono cliccabili per filtrare.
 
 ## Sicurezza
 

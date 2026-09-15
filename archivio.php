@@ -321,13 +321,33 @@
         }
     }
 
+    // Campi che contengono testo scritto davvero dall'autore. Tutto il resto
+    // dell'oggetto va ignorato: i nomi dei campi, i valori di servizio come
+    // "normal"/"none"/"article", e soprattutto 'image', che porta le immagini
+    // in base64. Conteggiare l'intero JSON riempiva la nuvola di parole come
+    // "text", "type" o "header" invece delle parole degli articoli.
+    const CAMPI_TESTUALI = new Set(['text', 'title', 'kicker', 'byline', 'imageCaption', 'nextIssue', 'fixedRubric']);
+
+    function estraiTestoRedazionale(nodo, chiave) {
+        if (typeof nodo === 'string') return CAMPI_TESTUALI.has(chiave) ? nodo + ' ' : '';
+        if (Array.isArray(nodo)) return nodo.map(v => estraiTestoRedazionale(v, chiave)).join('');
+        if (nodo && typeof nodo === 'object') {
+            return Object.entries(nodo).map(([k, v]) => estraiTestoRedazionale(v, k)).join('');
+        }
+        return '';
+    }
+
     async function computeGlobalKeywords(issues) {
-        const stopwords = new Set(['il','lo','la','i','gli','le','un','uno','una','un','e','ed','o','ma','per','con','su','tra','fra','da','a','in','di','che','è','non','si','ci','ciò','questo','questa','questi','queste','quello','quella','quelli','quelle','io','tu','lui','lei','noi','voi','loro','mio','tuo','suo','nostro','vostro','loro','me','te','se','ne','gli','della','delle','dei','degli','alla','alle','ai','agli','dalla','dalle','dai','dagli','sulla','sulle','sui','sugli','essere','avere','fare','dire','potere','volere','sapere','stare','andare','venire','parte','cosa','tempo','anno','giorno','persona','modo','casa','vita','mondo','paese','stato','città','punto','fine','nome','fatto','caso','forza','valore','libro','parola','mano','occhio','testa','cuore','aria','acqua','fuoco','terra','cielo','mare','sole','luna','stella']);
+        const stopwords = new Set(['il','lo','la','i','gli','le','un','uno','una','un','e','ed','o','ma','per','con','su','tra','fra','da','a','in','di','che','è','non','si','ci','ciò','questo','questa','questi','queste','quello','quella','quelli','quelle','io','tu','lui','lei','noi','voi','loro','mio','tuo','suo','nostro','vostro','loro','me','te','se','ne','gli','della','delle','dei','degli','alla','alle','ai','agli','dalla','dalle','dai','dagli','sulla','sulle','sui','sugli','essere','avere','fare','dire','potere','volere','sapere','stare','andare','venire','parte','cosa','tempo','anno','giorno','persona','modo','casa','vita','mondo','paese','stato','città','punto','fine','nome','fatto','caso','forza','valore','libro','parola','mano','occhio','testa','cuore','aria','acqua','fuoco','terra','cielo','mare','sole','luna','stella',
+            // forme elise: il tokenizer spezza "dell'antenna" in "dell" + "antenna"
+            'dell','nell','sull','dall','all','coll','quell','anch','dev','pò']);
         let wordFreq = new Map();
         for (let issue of issues) {
             const res = await fetch(`load_issue.php?id=${issue.id}`);
             const data = await res.json();
-            const text = JSON.stringify(data.content);
+            // Solo il testo redazionale, e senza i tag HTML ammessi nei testi
+            // (<strong>, <em>): altrimenti finivano contati come parole.
+            const text = estraiTestoRedazionale(data.content, null).replace(/<[^>]*>/g, ' ');
             const words = text.toLowerCase().match(/\b[a-zàèéìòù]{4,}\b/g) || [];
             for (let w of words) {
                 if (!stopwords.has(w) && w.length > 3) {
