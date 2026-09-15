@@ -1,6 +1,6 @@
 # 📰 Ezine Editor
 
-**Editor + archivio in stile giornale per una propria ezine personale** — componi numeri con testata, articoli su più colonne, immagini, rubriche fisse e anteprima live, li salvi in un archivio ricercabile con nuvola di parole chiave.
+**Editor + archivio in stile giornale per una propria ezine personale** — componi numeri con testata, articoli su più colonne, immagini, rubriche fisse e anteprima live, e li archivi con ricerca per titolo, statistiche e stampa/esportazione.
 
 Self-hosted, zero dipendenze: solo PHP + SQLite lato server, HTML/CSS/JS puro lato client. Nessun framework, nessun build step, nessun account esterno.
 
@@ -22,8 +22,8 @@ Self-hosted, zero dipendenze: solo PHP + SQLite lato server, HTML/CSS/JS puro la
 ## Caratteristiche
 
 - Editor visuale con anteprima live: articolo full-width, due colonne (sinistra/destra), immagini con float e stili (mezzatinta/bitmap), rubriche fisse, finto annuncio, box "prossimo numero"
-- Esportazione HTML standalone e stampa/PDF diretta dal browser
-- Archivio con ricerca per titolo/parola chiave, statistiche per numero (caratteri, parole, dimensione) e nuvola delle parole più frequenti calcolata sull'intero archivio
+- Esportazione in un singolo file HTML (CSS e immagini degli articoli incorporati) e stampa/PDF diretta dal browser
+- Archivio con ricerca per titolo, statistiche per numero (caratteri, parole, dimensione) e nuvola delle parole più frequenti dell'archivio
 - Persistenza automatica in `localStorage` mentre lavori, oltre al salvataggio esplicito nell'archivio
 
 ## Architettura
@@ -57,7 +57,9 @@ Tutto il contenuto di un numero (articoli, testi, immagini in base64, impostazio
 ## Uso
 
 - **Editor** (`index.html`): compila testata (anno, numero, data, colore), aggiungi articoli nelle varie sezioni, guarda l'anteprima aggiornarsi in tempo reale. "Salva nuova uscita" scrive nel database; se stai modificando un numero esistente (aperto dall'archivio) usa "Aggiorna" invece di creare un duplicato.
-- **Archivio** (`archivio.php`): cerca per titolo o parola chiave nel contenuto, clicca una parola nella nuvola per filtrare, visualizza/stampa/elimina ogni numero.
+- **Archivio** (`archivio.php`): cerca per titolo, consulta la nuvola delle parole più frequenti, visualizza/stampa/elimina ogni numero.
+
+> **Nota sulle funzioni dell'archivio.** La ricerca filtra sull'elenco dei numeri (titolo, data, conteggi), non sul testo degli articoli: il campo "parola chiave" non esegue una ricerca full-text. Le parole della nuvola sono indicative e non sono cliccabili per filtrare. Entrambe le funzioni richiedono una ricerca lato server per essere complete — contributi benvenuti.
 
 ## Sicurezza
 

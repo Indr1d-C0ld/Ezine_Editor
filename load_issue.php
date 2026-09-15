@@ -1,10 +1,10 @@
 <?php
 header('Content-Type: application/json');
 $db = new SQLite3(__DIR__ . '/ezine.db');
-$id = $_GET['id'] ?? 0;
-if (!$id) {
+$id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+if ($id === false || $id === null || $id <= 0) {
     http_response_code(400);
-    echo json_encode(['error' => 'Missing id']);
+    echo json_encode(['error' => 'Invalid id']);
     exit;
 }
 $stmt = $db->prepare("SELECT * FROM issues WHERE id = :id");

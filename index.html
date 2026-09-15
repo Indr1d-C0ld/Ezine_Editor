@@ -748,7 +748,9 @@
     let title = document.getElementById('issueTitle').value.trim();
     if (!title) title = `Uscita del ${new Date().toLocaleString()}`;
     const newspaperContent = getCurrentNewspaperData();
-    const payload = { title: title, date: document.getElementById('data').value, content: newspaperContent };
+    // 'data' = data di testata in formato italiano, è quella mostrata dall'archivio.
+    // La colonna 'date' (ISO) la assegna il server, vedi save_issue.php.
+    const payload = { title: title, data: document.getElementById('data').value, content: newspaperContent };
     try {
       const res = await fetch('save_issue.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const result = await res.json();
@@ -761,7 +763,7 @@
     if (!currentIssueId) return;
     const title = document.getElementById('issueTitle').value.trim() || `Uscita aggiornata`;
     const newspaperContent = getCurrentNewspaperData();
-    const payload = { id: currentIssueId, title: title, date: document.getElementById('data').value, content: newspaperContent };
+    const payload = { id: currentIssueId, title: title, data: document.getElementById('data').value, content: newspaperContent };
     try {
       const res = await fetch('update_issue.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const result = await res.json();

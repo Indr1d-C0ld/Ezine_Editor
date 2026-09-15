@@ -7,14 +7,26 @@ if (!$input || !isset($input['id'])) {
     echo json_encode(['error' => 'Invalid request']);
     exit;
 }
-$id = $input['id'];
+$id = filter_var($input['id'], FILTER_VALIDATE_INT);
+if ($id === false || $id <= 0) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid id']);
+    exit;
+}
 $stmt = $db->prepare("DELETE FROM issues WHERE id = :id");
 $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
 $result = $stmt->execute();
-if ($result) {
-    echo json_encode(['success' => true]);
-} else {
+if (!$result) {
     http_response_code(500);
     echo json_encode(['error' => $db->lastErrorMsg()]);
+    exit;
 }
+// execute() riesce anche quando non cancella nulla: senza questo controllo
+// un id inesistente riceverebbe comunque 'success'.
+if ($db->changes() === 0) {
+    http_response_code(404);
+    echo json_encode(['error' => 'Uscita non trovata']);
+    exit;
+}
+echo json_encode(['success' => true]);
 ?>
