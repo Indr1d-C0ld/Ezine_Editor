@@ -3,8 +3,9 @@
 #
 # Per attivarla:
 #   1) genera un file .htpasswd nella stessa cartella:
-#        htpasswd -cB .htpasswd <utente>
-#      (rimuovi -c se il file esiste già e vuoi solo aggiungere un utente)
+#        htpasswd -cB -C 10 .htpasswd <utente>
+#      (rimuovi -c se il file esiste già e vuoi solo aggiungere un utente;
+#       -C 10 alza il costo bcrypt rispetto al predefinito 5, ormai debole)
 #   2) rinomina questo file in .htaccess
 #   3) aggiorna AuthUserFile con il percorso assoluto reale
 #
@@ -22,3 +23,26 @@ Require valid-user
 <FilesMatch "\.db$">
     Require all denied
 </FilesMatch>
+
+# Header di sicurezza. Stanno qui e non nella configurazione del vhost, così
+# restano limitati a questa cartella e non toccano gli altri siti ospitati.
+<IfModule mod_headers.c>
+    # Gli endpoint restituiscono JSON contenente testo e markup scritti
+    # dall'autore: impedisce al browser di reinterpretare una risposta
+    # ignorando il Content-Type dichiarato.
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Il browser tiene in cache le credenziali Basic Auth, quindi una pagina
+    # incorniciata da un sito terzo risulterebbe già autenticata: senza questo
+    # un clic mirato potrebbe finire su "Elimina" a insaputa dell'utente.
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Evita che l'URL dello strumento finisca nel Referer verso siti esterni.
+    Header always set Referrer-Policy "same-origin"
+</IfModule>
+
+# Nota: non è impostata una Content-Security-Policy. Sarebbe l'unica misura
+# capace di contenere davvero l'HTML iniettato nei contenuti, ma l'app usa
+# script e stili inline, attributi onerror e immagini data: — una policy
+# severa la romperebbe, una permissiva con 'unsafe-inline' non proteggerebbe.
+# Ha senso solo separando script e stili in file esterni.

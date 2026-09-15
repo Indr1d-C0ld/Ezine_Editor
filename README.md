@@ -74,6 +74,8 @@ htpasswd -cB -C 10 /percorso/ezine/.htpasswd <utente>
 
 poi rinomina [`.htaccess.example`](.htaccess.example) in `.htaccess` e aggiorna `AuthUserFile` con il percorso assoluto reale. Dettagli e motivazione nel file stesso.
 
+Lo stesso file imposta `X-Content-Type-Options`, `X-Frame-Options` e `Referrer-Policy` (richiede `mod_headers`), e spiega perché **non** include una Content-Security-Policy: l'app usa script e stili inline, quindi una policy severa la romperebbe e una permissiva non proteggerebbe da nulla.
+
 ## Personalizzazione
 
 - **Testata**: cerca `La Mia Ezine` in `index.html` e `archivio.php` e sostituiscilo col nome della tua testata (compare anche nel `<title>`, nel disclaimer a fondo pagina e nel titolo delle finestre di stampa).
