@@ -16,8 +16,7 @@
         .search { margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap; }
         .search input, .search select { padding: 6px; font-family: monospace; }
         .keyword-cloud { margin: 20px 0; background: #f4efdf; padding: 10px; border: 1px solid #aaa; }
-        .keyword { display: inline-block; margin: 5px; padding: 3px 8px; background: #ddd; border-radius: 12px; cursor: pointer; }
-        .keyword:hover { background: #8b1f1f; color: white; }
+        .keyword { display: inline-block; margin: 5px; padding: 3px 8px; background: #ddd; border-radius: 12px; }
         .footer { margin-top: 20px; text-align: center; }
         a { color: #8b1f1f; text-decoration: none; }
     </style>
@@ -84,7 +83,7 @@
 
     <div class="search">
         <input type="text" id="searchTitle" placeholder="Cerca nel titolo...">
-        <input type="text" id="searchKeyword" placeholder="Parola chiave (nel contenuto)">
+        <input type="text" id="searchKeyword" placeholder="Parola chiave (titolo o data)">
         <button id="searchBtn">🔍 Cerca</button>
         <button id="resetBtn">⟳ Mostra tutti</button>
     </div>
@@ -99,7 +98,7 @@
         </thead>
         <tbody></tbody>
     </table>
-    <div class="footer">Archivio dinamico – Clicca su una parola chiave per filtrare le uscite che la contengono più frequentemente.</div>
+    <div class="footer">Archivio dinamico – Le parole più frequenti danno un'idea dei temi ricorrenti nell'archivio.</div>
 </div>
 
 <script>
@@ -343,11 +342,9 @@
             const span = document.createElement('span');
             span.className = 'keyword';
             span.innerText = `${word} (${count})`;
-            span.onclick = () => filterByKeyword(word);
             cloudSpan.appendChild(span);
         }
     }
-    function filterByKeyword(keyword) { alert(`Funzionalità avanzata: mostrare solo uscite con alta frequenza di "${keyword}" richiede implementazione server-side.`); }
 
     document.getElementById('searchBtn').onclick = () => {
         const titleFilter = document.getElementById('searchTitle').value.toLowerCase();
