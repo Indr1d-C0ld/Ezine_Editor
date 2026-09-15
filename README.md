@@ -1,6 +1,6 @@
 # 📰 Ezine Editor
 
-**Editor + archivio in stile giornale per una propria ezine personale** — componi numeri con testata, articoli su più colonne, immagini, rubriche fisse e anteprima live, e li archivi con ricerca per titolo, statistiche e stampa/esportazione.
+**Editor + archivio in stile giornale per una propria ezine personale** — componi numeri con testata, articoli su più colonne, immagini, rubriche fisse e anteprima live, e li archivi con ricerca nel testo, statistiche e stampa/esportazione.
 
 Self-hosted, zero dipendenze: solo PHP + SQLite lato server, HTML/CSS/JS puro lato client. Nessun framework, nessun build step, nessun account esterno.
 
@@ -23,7 +23,7 @@ Self-hosted, zero dipendenze: solo PHP + SQLite lato server, HTML/CSS/JS puro la
 
 - Editor visuale con anteprima live: articolo full-width, due colonne (sinistra/destra), immagini con float e stili (mezzatinta/bitmap), rubriche fisse, finto annuncio, box "prossimo numero"
 - Esportazione in un singolo file HTML (CSS e immagini degli articoli incorporati) e stampa/PDF diretta dal browser
-- Archivio con ricerca per titolo, statistiche per numero (caratteri, parole, dimensione) e nuvola delle parole più frequenti dell'archivio
+- Archivio con ricerca nel testo degli articoli e per titolo, statistiche per numero (caratteri, parole, dimensione) e nuvola delle parole più frequenti dell'archivio
 - Persistenza automatica in `localStorage` mentre lavori, oltre al salvataggio esplicito nell'archivio
 
 ## Architettura
@@ -33,6 +33,7 @@ Self-hosted, zero dipendenze: solo PHP + SQLite lato server, HTML/CSS/JS puro la
 | `index.html` | Editor: pannello di controllo a sinistra, anteprima del giornale a destra |
 | `archivio.php` | Elenco/ricerca dei numeri salvati, visualizza/stampa/elimina |
 | `save_issue.php` / `update_issue.php` / `load_issue.php` / `delete_issue.php` / `stats.php` | Endpoint JSON per il CRUD sul database |
+| `search_issues.php` | Ricerca lato server nel testo degli articoli |
 | `setup_db.php` | Crea il database SQLite e la tabella `issues` (idempotente) |
 
 Tutto il contenuto di un numero (articoli, testi, immagini in base64, impostazioni) è serializzato come JSON in un'unica colonna `content` — nessuna migrazione di schema da gestire quando aggiungi campi.
@@ -57,17 +58,19 @@ Tutto il contenuto di un numero (articoli, testi, immagini in base64, impostazio
 ## Uso
 
 - **Editor** (`index.html`): compila testata (anno, numero, data, colore), aggiungi articoli nelle varie sezioni, guarda l'anteprima aggiornarsi in tempo reale. "Salva nuova uscita" scrive nel database; se stai modificando un numero esistente (aperto dall'archivio) usa "Aggiorna" invece di creare un duplicato.
-- **Archivio** (`archivio.php`): cerca per titolo, consulta la nuvola delle parole più frequenti, visualizza/stampa/elimina ogni numero.
+- **Archivio** (`archivio.php`): cerca per titolo o nel testo degli articoli, consulta la nuvola delle parole più frequenti, visualizza/stampa/elimina ogni numero.
 
-> **Nota sulla ricerca.** Il filtro lavora sull'elenco dei numeri (titolo e data), non sul testo degli articoli: non è una ricerca full-text, che richiederebbe una query lato server. La nuvola conta invece le parole effettivamente scritte negli articoli (titoli, testi, occhielli e firme), ma serve a dare un'idea dei temi ricorrenti: le parole non sono cliccabili per filtrare.
+> **Nota sulla ricerca.** Cercare una parola chiave interroga il server (`search_issues.php`), che scorre il testo degli articoli — titoli, testi, occhielli, firme e didascalie — ignorando la struttura dati e le immagini: cercare `text` o `strong` non restituisce quindi ogni uscita. La nuvola applica lo stesso criterio per contare le parole, ma serve solo a dare un'idea dei temi ricorrenti: le parole non sono cliccabili per filtrare.
 
 ## Sicurezza
 
 Di base l'app **non ha autenticazione**: chiunque conosca l'URL può leggere, modificare e cancellare l'archivio. Per uso non strettamente locale è fortemente consigliato attivare HTTP Basic Auth a livello di cartella — protegge automaticamente sia le pagine che gli endpoint, senza bisogno di scrivere codice:
 
 ```bash
-htpasswd -cB /percorso/ezine/.htpasswd <utente>
+htpasswd -cB -C 10 /percorso/ezine/.htpasswd <utente>
 ```
+
+`-C 10` alza il costo bcrypt rispetto al valore predefinito (5), ormai troppo basso. Non salire oltre senza motivo: Basic Auth riverifica l'hash a ogni richiesta HTTP, quindi un costo alto rallenta l'archivio in modo proporzionale al numero di uscite.
 
 poi rinomina [`.htaccess.example`](.htaccess.example) in `.htaccess` e aggiorna `AuthUserFile` con il percorso assoluto reale. Dettagli e motivazione nel file stesso.
 
