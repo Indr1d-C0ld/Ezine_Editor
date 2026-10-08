@@ -3,12 +3,19 @@
 // robots.txt, feed RSS (se è indicato l'indirizzo pubblico) e istruzioni.
 //
 // Il sito non viene mai servito da questo server: si scarica e si carica su un
-// hosting statico o un servizio onion. Per questo ogni pagina è autonoma e
-// blindata: la Content-Security-Policy vieta qualunque richiesta esterna, così
-// chi legge non contatta nessun sito terzo (nemmeno per errore, con
-// un'immagine esterna rimasta in un articolo).
+// hosting statico o un servizio onion. Ogni pagina è blindata: la
+// Content-Security-Policy ammette solo immagini del sito stesso e vieta
+// qualunque richiesta esterna, così chi legge non contatta nessun sito terzo
+// (nemmeno per errore, con un'immagine esterna rimasta in un articolo).
+//
+// Le istantanee salvate hanno le immagini incorporate (data URI). Qui vengono
+// estratte in file separati: la pagina pesa un terzo in meno (niente base64),
+// il testo appare subito e le immagini arrivano quando servono, e quelle
+// ripetute, come il logo in ogni uscita, si scaricano una volta sola. Conta
+// soprattutto sui servizi onion, dove la banda è poca.
 require __DIR__ . '/lib.php';
 ezine_metodo('GET');
+ini_set('memory_limit', '384M');   // decodifica e ricampionamento delle immagini
 $db = ezine_db();
 $cfg = ezine_config_pubblicazione($db);
 
@@ -25,8 +32,79 @@ while ($row = $r->fetchArray(SQLITE3_ASSOC)) $uscite[] = $row;
 if (!$uscite) ezine_errore('Nessuna uscita pubblicata: pubblicane almeno una dall\'archivio', 404);
 
 $head = '<meta name="referrer" content="no-referrer">'
-      . '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">'
-      . ($cfg['noindex'] ? '<meta name="robots" content="noindex, nofollow, noarchive">' : '');
+      . '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' data:; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">'
+      . ($cfg['noindex'] ? '<meta name="robots" content="noindex, nofollow, noarchive">' : '')
+      // con width/height dichiarati il browser riserva lo spazio prima che
+      // l'immagine arrivi; height:auto mantiene le proporzioni quando la
+      // colonna è più stretta dell'immagine
+      . '<style>.newspaper img.article-img[width] { height: auto; }</style>';
+
+// Le immagini caricate arrivano fino a 2400 px: per leggere a schermo ne
+// bastano 1600. Solo le fotografie (JPEG) vengono ridotte e ricompresse, e solo
+// se il file risulta davvero più leggero; i PNG retinati restano intatti,
+// perché ricampionarli rovinerebbe il retino.
+function alleggerisci(string $bytes, string $tipo): array {
+    $ext = ['jpeg' => 'jpg', 'png' => 'png', 'gif' => 'gif', 'webp' => 'webp'][$tipo];
+    if ($tipo !== 'jpeg') return [$bytes, $ext];
+    $info = @getimagesizefromstring($bytes);
+    if (!$info || max($info[0], $info[1]) <= 1600) return [$bytes, $ext];
+    $src = @imagecreatefromstring($bytes);
+    if (!$src) return [$bytes, $ext];
+    $k = 1600 / max($info[0], $info[1]);
+    $w = (int) round($info[0] * $k);
+    $h = (int) round($info[1] * $k);
+    $dst = imagecreatetruecolor($w, $h);
+    imagecopyresampled($dst, $src, 0, 0, 0, 0, $w, $h, $info[0], $info[1]);
+    ob_start();
+    imagejpeg($dst, null, 82);
+    $nuovo = ezine_jpeg_senza_commenti(ob_get_clean());
+    return [strlen($nuovo) < strlen($bytes) ? $nuovo : $bytes, $ext];
+}
+
+// Sostituisce in un tag <img> l'immagine incorporata con un file in img/.
+// Il nome deriva dal contenuto: la stessa immagine in più pagine è un file solo.
+function estrai_immagine(string $tag, array &$immagini): string {
+    $marca = 'src="data:image/';
+    $a = strpos($tag, $marca);
+    if ($a === false) return $tag;
+    $t = $a + strlen($marca);
+    $b64 = strpos($tag, ';base64,', $t);
+    $chiusa = strpos($tag, '"', $t);
+    if ($b64 === false || $chiusa === false || $b64 > $chiusa) return $tag;
+    $tipo = substr($tag, $t, $b64 - $t);
+    if (!in_array($tipo, ['png', 'jpeg', 'gif', 'webp'], true)) return $tag;
+    $bytes = base64_decode(substr($tag, $b64 + 8, $chiusa - $b64 - 8), true);
+    if ($bytes === false || strlen($bytes) < 1024) return $tag;    // minuscole: restano incorporate
+    [$bytes, $ext] = alleggerisci($bytes, $tipo);
+    $nome = 'img/' . substr(hash('sha256', $bytes), 0, 20) . '.' . $ext;
+    $immagini[$nome] = $bytes;
+    $extra = '';
+    // dimensioni e caricamento differito solo per le immagini degli articoli:
+    // il logo ha un'altezza fissa nel CSS e sta in cima, va mostrato subito
+    if (str_contains($tag, 'article-img')) {
+        $info = @getimagesizefromstring($bytes);
+        if ($info) $extra .= " width=\"{$info[0]}\" height=\"{$info[1]}\"";
+        $extra .= ' loading="lazy" decoding="async"';
+    }
+    return substr($tag, 0, $a) . 'src="' . $nome . '"' . $extra . substr($tag, $chiusa + 1);
+}
+
+// Scorre i tag <img> senza espressioni regolari sull'intera pagina: con
+// immagini incorporate da diversi MB una regex rischierebbe di superare i
+// limiti interni di PCRE.
+function estrai_immagini(string $html, array &$immagini): string {
+    $out = '';
+    $pos = 0;
+    while (($i = strpos($html, '<img', $pos)) !== false) {
+        $fine = strpos($html, '>', $i);
+        if ($fine === false) break;
+        $out .= substr($html, $pos, $i - $pos) . estrai_immagine(substr($html, $i, $fine - $i + 1), $immagini);
+        $pos = $fine + 1;
+    }
+    return $out . substr($html, $pos);
+}
+
+$immagini = [];
 
 // Il logo dell'indice, ridotto e incorporato come per le pagine delle uscite.
 function logo_incorporato(?string $percorso): string {
@@ -58,7 +136,7 @@ foreach ($uscite as $u) {
          . '<a href="index.html" style="color:#333">← Tutte le uscite</a></nav>'
          . '<style>@media print { nav { display: none } }</style>';
     $html = preg_replace('/(<body[^>]*>)/i', '$1' . $nav, $html, 1);
-    $pagine[$u['slug'] . '.html'] = $html;
+    $pagine[$u['slug'] . '.html'] = estrai_immagini($html, $immagini);
 }
 
 // ---------- indice ----------
@@ -96,6 +174,7 @@ $indice = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">' . $head
   . ($motto ? '<p class="motto">“' . $e($motto) . '”</p>' : '')
   . '</header><h2>Uscite</h2><ul>' . $righe . '</ul>' . $feedLink
   . '<footer>' . $e($nome) . '</footer></main></body></html>';
+$indice = estrai_immagini($indice, $immagini);
 
 // ---------- feed RSS ----------
 // Le date sono arrotondate al giorno: un orario preciso direbbe a che ora
@@ -123,11 +202,12 @@ $robots = $cfg['noindex'] ? "User-agent: *\nDisallow: /\n" : "User-agent: *\nAll
 $leggimi = "Sito pubblico di $nome\n" . str_repeat('=', mb_strlen("Sito pubblico di $nome")) . "\n\n"
   . "Contiene " . count($uscite) . " uscit" . (count($uscite) === 1 ? 'a' : 'e') . " pubblicat" . (count($uscite) === 1 ? 'a' : 'e') . ", la pagina indice"
   . ($feed ? ", il feed RSS" : '') . " e robots.txt.\n\n"
+  . "Le immagini stanno nella cartella img/: va caricata insieme alle pagine.\n\n"
   . "Sono semplici file statici: si caricano così come sono su qualunque hosting statico\n"
   . "o servizio onion. Non serve PHP, né un database.\n\n"
-  . "Ogni pagina è autonoma: stile, logo e immagini sono incorporati, e una\n"
-  . "Content-Security-Policy impedisce al browser di chi legge di contattare\n"
-  . "qualunque altro sito. Nessun font esterno, nessuno script, nessun tracciamento.\n\n"
+  . "Una Content-Security-Policy ammette solo le immagini del sito stesso e impedisce\n"
+  . "al browser di chi legge di contattare qualunque altro sito. Nessun font esterno,\n"
+  . "nessuno script, nessun tracciamento.\n\n"
   . ($cfg['noindex'] ? "Le pagine chiedono ai motori di ricerca di non indicizzarle.\n\n" : '')
   . "Attenzione: queste protezioni riguardano chi legge. Chi ospita i file vede gli\n"
   . "indirizzi IP dei visitatori, e l'indirizzo del server rivela chi lo gestisce.\n"
@@ -142,7 +222,7 @@ $tmp = tempnam(sys_get_temp_dir(), 'ezsite');
 $zip = new ZipArchive();
 if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) ezine_errore('Impossibile creare il pacchetto', 500);
 $dir = 'sito/';
-$file = ['index.html' => $indice, 'robots.txt' => $robots, 'LEGGIMI.txt' => $leggimi] + $pagine;
+$file = ['index.html' => $indice, 'robots.txt' => $robots, 'LEGGIMI.txt' => $leggimi] + $pagine + $immagini;
 if ($feed) $file['feed.xml'] = $feed;
 foreach ($file as $nomeFile => $contenuto) {
     $zip->addFromString($dir . $nomeFile, $contenuto);

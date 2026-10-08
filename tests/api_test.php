@@ -134,6 +134,27 @@ function png_con_testo(): string {
     return substr($png, 0, 33) . $chunk . substr($png, 33);     // dopo IHDR
 }
 
+// PNG con rumore (non comprimibile sotto 1 KB) e JPEG grande con sfumature:
+// immagini vere per verificare estrazione, deduplicazione e riduzione.
+function png_rumore(int $w, int $h): string {
+    $img = imagecreatetruecolor($w, $h);
+    mt_srand(7);
+    for ($y = 0; $y < $h; $y++) for ($x = 0; $x < $w; $x++) {
+        $v = mt_rand(0, 1) ? 0 : 255;
+        imagesetpixel($img, $x, $y, imagecolorallocate($img, $v, $v, $v));
+    }
+    ob_start(); imagepng($img, null, 9); return ob_get_clean();
+}
+
+function jpeg_grande(int $w, int $h): string {
+    $img = imagecreatetruecolor($w, $h);
+    for ($x = 0; $x < $w; $x += 4) {
+        imagefilledrectangle($img, $x, 0, $x + 3, $h - 1, imagecolorallocate($img, (int) (255 * $x / $w), 90, 160));
+    }
+    for ($i = 0; $i < 60; $i++) imagefilledellipse($img, ($i * 397) % $w, ($i * 211) % $h, 140, 90, imagecolorallocate($img, 240, 220, 60));
+    ob_start(); imagejpeg($img, null, 90); return ob_get_clean();
+}
+
 function blocchi_png(string $png): array {
     $out = []; $i = 8;
     while ($i + 8 <= strlen($png)) {
@@ -350,11 +371,11 @@ $tutteBlindate = true; $dettaglio = '';
 foreach ($nomi as $n) {
     if (!str_ends_with($n, '.html')) continue;
     $h = $z->getFromName($n);
-    $ok = str_contains($h, "default-src 'none'; img-src data:") && str_contains($h, 'name="referrer" content="no-referrer"')
+    $ok = str_contains($h, "default-src 'none'; img-src 'self' data:;") && str_contains($h, 'name="referrer" content="no-referrer"')
        && str_contains($h, 'name="robots" content="noindex') && !preg_match('/onerror=|<script/i', $h);
     if (!$ok) { $tutteBlindate = false; $dettaglio .= "$n "; }
 }
-verifica('ogni pagina ha CSP, no-referrer e noindex, e nessuno script', $tutteBlindate, $dettaglio);
+verifica('ogni pagina ha CSP (solo immagini del sito), no-referrer e noindex, e nessuno script', $tutteBlindate, $dettaglio);
 verifica('le pagine delle uscite hanno il link di ritorno all\'indice', str_contains((string) $z->getFromName("sito/$slug.html"), 'href="index.html"'));
 verifica('robots.txt esclude i motori di ricerca', trim((string) $z->getFromName('sito/robots.txt')) === "User-agent: *\nDisallow: /");
 $feed = @simplexml_load_string((string) $z->getFromName('sito/feed.xml'));
@@ -368,6 +389,42 @@ verifica('senza indirizzo pubblico il feed non viene generato', $z->locateName('
 verifica('con indicizzazione consentita robots.txt lo permette', str_contains((string) $z->getFromName('sito/robots.txt'), 'Allow: /'));
 verifica('con indicizzazione consentita le pagine non hanno noindex', !str_contains((string) $z->getFromName('sito/index.html'), 'noindex'));
 post_json('api/publications.php', ['config' => ['publicUrl' => '', 'noindex' => true]]);
+
+// --- pacchetto leggero: immagini estratte, deduplicate, ridotte ---
+$pngRetinato = png_rumore(300, 200);
+$jpgGrande = jpeg_grande(2400, 1600);
+$logoPng = png_rumore(120, 60);
+$pesante = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Uscita</title></head><body style="margin:0">'
+         . '<div class="newspaper"><img class="header-logo" src="data:image/png;base64,' . base64_encode($logoPng) . '" alt="">'
+         . '<figure class="image-wrapper"><img class="article-img img-baked" src="data:image/png;base64,' . base64_encode($pngRetinato) . '" alt="a"></figure>'
+         . '<figure class="image-wrapper"><img class="article-img" src="data:image/jpeg;base64,' . base64_encode($jpgGrande) . '" alt="b"></figure>'
+         . '<img src="data:image/png;base64,AAAA" alt="minuscola"><p>Testo</p></div></body></html>';
+post_json('api/publish.php', ['issue_id' => $id, 'html' => $pesante]);
+post_json('api/publish.php', ['issue_id' => $idImg, 'html' => $pesante]);
+$zipLeggero = get('api/site_package.php')['body'];
+$z = zip_da($zipLeggero);
+$img = [];
+for ($i = 0; $i < $z->numFiles; $i++) {
+    $n = $z->getNameIndex($i);
+    if (str_starts_with($n, 'sito/img/')) $img[$n] = $z->getFromIndex($i);
+}
+$pag = (string) $z->getFromName("sito/$slug.html");
+verifica('le immagini incorporate diventano file nella cartella img/', count($img) >= 3 && str_contains($pag, 'src="img/'), count($img) . ' file');
+verifica('nella pagina non restano immagini incorporate pesanti', !preg_match('#src="data:image/(png|jpeg);base64,[A-Za-z0-9+/=]{2000,}#', $pag));
+verifica('le immagini minuscole restano incorporate (un file in più costerebbe più di loro)', str_contains($pag, 'src="data:image/png;base64,AAAA"'));
+verifica('la pagina pesa una frazione dell\'istantanea salvata', strlen($pag) < strlen($pesante) * 0.1, round(strlen($pag) / 1024) . ' KB contro ' . round(strlen($pesante) / 1024) . ' KB');
+verifica('immagini uguali in uscite diverse diventano un file solo', count($img) === 3, implode(', ', array_keys($img)));
+$foto = array_values(array_filter($img, fn($b, $n) => str_ends_with($n, '.jpg'), ARRAY_FILTER_USE_BOTH))[0] ?? '';
+$dimFoto = $foto ? getimagesizefromstring($foto) : [0, 0];
+verifica('le fotografie oltre i 1600 px vengono ridotte', max($dimFoto[0], $dimFoto[1]) === 1600, "{$dimFoto[0]}×{$dimFoto[1]}");
+verifica('...e pesano meno dell\'originale', $foto !== '' && strlen($foto) < strlen($jpgGrande), round(strlen($foto) / 1024) . ' KB contro ' . round(strlen($jpgGrande) / 1024) . ' KB');
+verifica('...senza metadati né commenti', $foto !== '' && !str_contains($foto, 'gd-jpeg'));
+verifica('i PNG retinati restano identici, pixel per pixel', in_array($pngRetinato, $img, true));
+verifica('le immagini degli articoli hanno dimensioni dichiarate e caricamento differito',
+    preg_match('#<img class="article-img img-baked" src="img/[a-f0-9]{20}\.png" width="300" height="200" loading="lazy"#', $pag) === 1);
+verifica('il logo si carica subito, senza caricamento differito', preg_match('#<img class="header-logo" src="img/[a-f0-9]{20}\.png" alt="">#', $pag) === 1);
+$dateZip = date_nello_zip($zipLeggero);
+verifica('anche le immagini nello zip hanno la data fissa', $dateZip && array_unique($dateZip) === ['1980-01-01 00:00']);
 
 $r = post_json('api/publish.php', ['issue_id' => $idImg, 'action' => 'unpublish']);
 verifica('ritira un\'uscita dal sito', $r['status'] === 200 && $stato($idImg) === null);

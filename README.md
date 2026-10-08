@@ -54,6 +54,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 **Pubblicazione**
 - Le uscite scelte formano un **sito statico da scaricare** (indice, una pagina per uscita, feed RSS, robots.txt), da caricare su qualunque hosting statico o servizio onion
 - Pagine blindate: una Content-Security-Policy impedisce a chi legge di contattare qualunque sito terzo; niente script, niente referrer, date senza orario
+- Pagine leggere: le immagini diventano file separati (una sola copia per quelle ripetute, come il logo), le foto vengono ridotte per lo schermo e caricate solo quando servono
 
 ## Requisiti
 
@@ -121,10 +122,13 @@ Il server su cui gira l'editor **non serve mai** le pagine pubblicate: le prepar
 Il pacchetto contiene:
 - `index.html`, con l'elenco delle uscite pubblicate;
 - una pagina per uscita (`anno-i-numero-3.html`), identica all'export e con un link di ritorno all'indice. Ripubblicando, il nome del file resta lo stesso;
+- la cartella `img/` con le immagini;
 - `feed.xml`, se nell'archivio indichi l'indirizzo pubblico del sito;
 - `robots.txt` e `LEGGIMI.txt`.
 
-Ogni pagina porta una Content-Security-Policy (`default-src 'none'; img-src data:`) che impedisce al browser di chi legge qualunque richiesta esterna: anche un'immagine esterna rimasta in un articolo non viene caricata, e l'archivio avvisa prima di pubblicare. Niente script, `no-referrer`, e di base `noindex` per i motori di ricerca, disattivabile. Le date del feed sono arrotondate al giorno e i file nello zip hanno una data fissa, in UTC: un orario preciso direbbe quando lavora la redazione e in quale fuso orario vive.
+Le istantanee salvate hanno le immagini incorporate; nel pacchetto vengono estratte in `img/`, con un nome derivato dal contenuto, così un'immagine presente in più uscite si scarica una volta sola. Una pagina passa così da centinaia di KB a una decina, e il testo compare subito anche su una connessione lenta come quella di un servizio onion. Le fotografie oltre i 1600 px vengono ridotte per lo schermo e ricompresse, solo se il file risulta davvero più leggero. I PNG retinati restano invece identici, pixel per pixel, perché ricampionarli rovinerebbe il retino. Le immagini degli articoli dichiarano le proprie dimensioni, così la pagina non salta mentre arrivano, e si caricano solo quando entrano in vista. Quelle minuscole restano incorporate, perché un file in più costerebbe più di loro.
+
+Ogni pagina porta una Content-Security-Policy (`default-src 'none'; img-src 'self' data:`) che ammette solo le immagini del sito stesso e impedisce al browser di chi legge qualunque richiesta esterna. Un'immagine esterna rimasta in un articolo non viene caricata, e l'archivio avvisa prima di pubblicare. Le immagini del sito si vedono anche aprendo le pagine direttamente dal disco: verificato con Chromium e Firefox. Niente script, `no-referrer`, e di base `noindex` per i motori di ricerca, disattivabile. Le date del feed sono arrotondate al giorno e i file nello zip hanno una data fissa, in UTC: un orario preciso direbbe quando lavora la redazione e in quale fuso orario vive.
 
 Se modifichi un'uscita dopo averla pubblicata, l'archivio la segna "da aggiornare" finché non la ripubblichi. Ritirarla la toglie dal pacchetto successivo; le copie già caricate online vanno aggiornate a mano.
 
