@@ -383,6 +383,38 @@ verifica('il feed RSS è XML valido', $feed !== false);
 $dateFeed = $feed ? array_map('strval', $feed->xpath('//item/pubDate')) : [];
 verifica('le date del feed sono arrotondate al giorno', $dateFeed && !array_filter($dateFeed, fn($x) => !str_ends_with($x, '00:00:00 +0000')), implode(' | ', $dateFeed));
 
+// --- descrizioni del feed: ricavate dalla pagina pubblicata, solo testo ---
+$lungo = str_repeat('Il comitato di quartiere denuncia da mesi la presenza di apparati non autorizzati. ', 8);
+$istantanea = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>U</title></head><body>'
+    . '<div class="newspaper"><section class="page page-front"><div class="page-body">'
+    . '<div class="header"><div class="edition-info"><span>📧 <span class="ez-email">reda<span class="ez-esca" hidden>(togli)</span>zione&#64;<span class="ez-esca" hidden>(togli)</span>posta&#46;it</span></span></div></div>'
+    . '<div class="full-width ez-item"><div class="kicker">ESCLUSIVO</div><h2 class="fw-title" style="font-size:3rem">Antenne nel quartiere</h2>'
+    . '<p>Città in allarme: scriveteci a te<span class="ez-esca" hidden>(togli)</span>st&#64;<span class="ez-esca" hidden>(togli)</span>esempio&#46;it. ' . $lungo . '</p>'
+    . '<p>Secondo paragrafo da non includere.</p>'
+    . '<figure class="image-wrapper"><img class="article-img" src="data:image/png;base64,AAAA" alt="x"></figure></div>'
+    . '<div class="columns-2"><div><article class="ez-item"><h2>Biometrici <em>ovunque</em></h2><p>x</p></article></div>'
+    . '<div><article class="ez-item"><h2>Chi controlla le telecamere?</h2><p>y</p></article></div></div>'
+    . '<div class="columns-3"><div><h2>🌍 ROUNDUP</h2><p class="ez-item">voce</p></div></div>'
+    . '</div></section></div></body></html>';
+post_json('api/publish.php', ['issue_id' => $id, 'html' => $istantanea]);
+$feedRicco = @simplexml_load_string((string) zip_da(get('api/site_package.php')['body'])->getFromName('sito/feed.xml'));
+$descr = function (string $s) use ($feedRicco): string {
+    foreach ($feedRicco ? $feedRicco->channel->item : [] as $it) if (str_ends_with((string) $it->link, "/$s.html")) return (string) $it->description;
+    return '';
+};
+$d = $descr($slug);
+verifica('la descrizione elenca i titoli degli articoli, nell\'ordine della pagina', str_contains($d, 'In questo numero: Antenne nel quartiere · Biometrici ovunque · Chi controlla le telecamere?'), $d);
+verifica('nessun punto aggiunto dopo un titolo che finisce con "?"', !str_contains($d, '?.'));
+verifica('le intestazioni delle rubriche non finiscono fra i titoli', !str_contains($d, 'ROUNDUP'));
+verifica('riporta le prime righe dell\'articolo principale', str_contains($d, '«Città in allarme: scriveteci a [indirizzo email]. Il comitato'));
+verifica('l\'estratto è troncato su una parola, con i puntini', (bool) preg_match('/ [^ ]+…»$/u', $d) && !str_contains($d, 'Secondo paragrafo'));
+preg_match('/«(.*)»/u', $d, $estratto);
+verifica('l\'estratto resta intorno ai 300 caratteri', isset($estratto[1]) && mb_strlen($estratto[1]) <= 301, isset($estratto[1]) ? (string) mb_strlen($estratto[1]) : 'assente');
+verifica('nessun indirizzo email né frammento di protezione nel feed', !str_contains($d, '@') && !str_contains($d, '(togli)') && !str_contains($d, 'zione'));
+verifica('la descrizione è solo testo: niente HTML, niente immagini', !str_contains($d, '<') && !str_contains($d, 'data:image'));
+$dVuota = $descr('anno-i-numero-1-2');
+verifica('un\'uscita senza articoli ha come descrizione la sola data', $dVuota === 'Lunedì 5 ottobre 2026.', $dVuota);
+
 post_json('api/publications.php', ['config' => ['publicUrl' => '', 'noindex' => false]]);
 $z = zip_da(get('api/site_package.php')['body']);
 verifica('senza indirizzo pubblico il feed non viene generato', $z->locateName('sito/feed.xml') === false);

@@ -179,6 +179,55 @@ $indice = estrai_immagini($indice, $immagini);
 // ---------- feed RSS ----------
 // Le date sono arrotondate al giorno: un orario preciso direbbe a che ora
 // lavora la redazione, e da lì in quale fuso orario vive.
+//
+// Ogni uscita ha una descrizione in solo testo: data di testata, titoli degli
+// articoli e le prime righe dell'articolo principale. Si ricava dalla pagina
+// pubblicata (ciò che i lettori trovano davvero online), non dall'uscita in
+// archivio, che può essere cambiata dopo. Niente HTML: i lettori di feed non
+// applicano la Content-Security-Policy, scaricherebbero le immagini (a volte
+// tramite server intermedi) e mostrerebbero i frammenti che proteggono gli
+// indirizzi email. Gli indirizzi, per lo stesso motivo, vengono tolti.
+function descrizione_feed(string $html, string $data): string {
+    $dom = new DOMDocument();
+    // l'intestazione xml dice a libxml che il testo è UTF-8; PARSEHUGE serve
+    // perché le istantanee contengono immagini incorporate da diversi MB
+    $ok = @$dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET | LIBXML_PARSEHUGE);
+    if (!$ok) return $data;
+    $xp = new DOMXPath($dom);
+    foreach (iterator_to_array($xp->query('//*[contains(concat(" ", @class, " "), " ez-esca ")]')) as $esca) {
+        $esca->parentNode->removeChild($esca);
+    }
+    $pulisci = function (string $t): string {
+        $t = preg_replace('/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/', '[indirizzo email]', $t);
+        return trim(preg_replace('/\s+/u', ' ', $t));
+    };
+    // solo i titoli degli articoli: le intestazioni delle rubriche (anch'esse h2)
+    // stanno fuori da article e da .full-width
+    $titoli = [];
+    foreach ($xp->query('//*[contains(concat(" ", @class, " "), " full-width ")]//h2 | //article//h2') as $h) {
+        $t = $pulisci($h->textContent);
+        if ($t !== '' && !in_array($t, $titoli, true)) $titoli[] = $t;
+    }
+    // articolo principale: quello a tutta larghezza, altrimenti il primo
+    $apertura = '';
+    $primo = $xp->query('(//*[contains(concat(" ", @class, " "), " full-width ")] | //article)[1]//p')->item(0);
+    if ($primo) {
+        $apertura = $pulisci($primo->textContent);
+        if (mb_strlen($apertura) > 300) {
+            $taglio = mb_substr($apertura, 0, 300);
+            $spazio = mb_strrpos($taglio, ' ');
+            $apertura = rtrim(mb_substr($taglio, 0, $spazio ?: 300), " ,;:.–-") . '…';
+        }
+    }
+    // es. «Giovedì 8 ottobre 2026. In questo numero: A · B. «Le prime righe…»»
+    // il punto finale solo se il testo non termina già con una punteggiatura (?, !)
+    $frase = fn(string $t) => preg_match('/[.!?…]$/u', $t) ? $t : "$t.";
+    $parti = array_filter([$data !== '' ? $frase($data) : '',
+                           $titoli ? $frase('In questo numero: ' . implode(' · ', $titoli)) : '',
+                           $apertura !== '' ? "«{$apertura}»" : '']);
+    return implode(' ', $parti);
+}
+
 $feed = null;
 if ($cfg['publicUrl']) {
     $x = fn($s) => htmlspecialchars((string) $s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
@@ -188,7 +237,7 @@ if ($cfg['publicUrl']) {
         $giorno = gmdate('D, d M Y', strtotime($u['published_at'] . ' UTC')) . ' 00:00:00 +0000';
         $items .= "<item><title>{$x("Anno {$u['anno']} – Numero {$u['numero']}: {$u['title']}")}</title>"
                 . "<link>{$x($url)}</link><guid isPermaLink=\"true\">{$x($url)}</guid>"
-                . "<pubDate>$giorno</pubDate><description>{$x($u['data'])}</description></item>";
+                . "<pubDate>$giorno</pubDate><description>{$x(descrizione_feed($u['html'], (string) $u['data']))}</description></item>";
     }
     $feed = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
           . '<rss version="2.0"><channel>'
