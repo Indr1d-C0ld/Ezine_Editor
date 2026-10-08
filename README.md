@@ -1,6 +1,6 @@
 # 📰 Ezine Editor
 
-**Editor e archivio per una ezine personale in stile giornale** — componi numeri di più pagine con anteprima A4 reale, carica immagini ripulite dai metadati e retinate per la fotocopia, stampa a libretto, archivia con cronologia delle versioni e ricerca nel testo.
+**Editor e archivio per una ezine personale in stile giornale** — componi numeri di più pagine con anteprima A4 reale, carica immagini ripulite dai metadati e retinate per la fotocopia, stampa a libretto, archivia con cronologia delle versioni e pubblica un sito statico da caricare dove vuoi.
 
 Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato client. Nessun framework, nessun build step, nessun servizio esterno, nessun font o script caricato da altri siti.
 
@@ -17,6 +17,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - [Immagini e privacy](#immagini-e-privacy)
 - [Stampa e fotocopia](#stampa-e-fotocopia)
 - [Archivio, versioni e backup](#archivio-versioni-e-backup)
+- [Pubblicazione per i lettori](#pubblicazione-per-i-lettori)
 - [Sicurezza](#sicurezza)
 - [Architettura](#architettura)
 - [Licenza](#licenza)
@@ -47,6 +48,10 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - Bozza di lavoro salvata sul server, non solo nel browser
 - Protezione dai conflitti: se un'uscita viene salvata da un'altra finestra, l'editor chiede prima di sovrascrivere
 - Backup completo in un .zip e ripristino non distruttivo; pulizia delle immagini non più usate
+
+**Pubblicazione**
+- Le uscite scelte formano un **sito statico da scaricare** (indice, una pagina per uscita, feed RSS, robots.txt), da caricare su qualunque hosting statico o servizio onion
+- Pagine blindate: una Content-Security-Policy impedisce a chi legge di contattare qualunque sito terzo; niente script, niente referrer, date senza orario
 
 ## Requisiti
 
@@ -101,7 +106,23 @@ Le retinature lavorano sui pixel, non con filtri CSS: per questo l'effetto sopra
 
 Ogni "Aggiorna" salva la versione che sta per essere sostituita: ne restano fino a 30 per uscita. Anche il ripristino di una versione salva prima quella attuale, quindi si può sempre tornare indietro.
 
-Il backup è un unico .zip con uscite, cronologia, impostazioni della testata, bozza e immagini. Il ripristino aggiunge senza cancellare: le uscite già presenti vengono saltate, quindi ripristinare due volte lo stesso file non crea doppioni. Le impostazioni della testata vengono sostituite solo se lo chiedi. Il file caricato viene trattato come non affidabile: si accettano solo nomi di file attesi e ogni immagine viene ricodificata come un normale caricamento.
+Il backup è un unico .zip con uscite, cronologia, pubblicazioni, impostazioni della testata, bozza e immagini. Il ripristino aggiunge senza cancellare: le uscite già presenti vengono saltate, quindi ripristinare due volte lo stesso file non crea doppioni. Le impostazioni della testata vengono sostituite solo se lo chiedi. Il file caricato viene trattato come non affidabile: si accettano solo nomi di file attesi e ogni immagine viene ricodificata come un normale caricamento.
+
+## Pubblicazione per i lettori
+
+Il server su cui gira l'editor **non serve mai** le pagine pubblicate: le prepara soltanto. Dall'archivio, "🌐 Pubblica" salva un'istantanea autonoma di un'uscita; "Scarica il sito (.zip)" produce il sito completo da caricare altrove. Questo tiene separati il luogo dove lavori e quello dove leggono gli altri: l'indirizzo dell'hosting rivela chi lo gestisce, e il server dell'editor sta spesso su una connessione personale.
+
+Il pacchetto contiene:
+- `index.html`, con l'elenco delle uscite pubblicate;
+- una pagina per uscita (`anno-i-numero-3.html`), identica all'export e con un link di ritorno all'indice. Ripubblicando, il nome del file resta lo stesso;
+- `feed.xml`, se nell'archivio indichi l'indirizzo pubblico del sito;
+- `robots.txt` e `LEGGIMI.txt`.
+
+Ogni pagina porta una Content-Security-Policy (`default-src 'none'; img-src data:`) che impedisce al browser di chi legge qualunque richiesta esterna: anche un'immagine esterna rimasta in un articolo non viene caricata, e l'archivio avvisa prima di pubblicare. Niente script, `no-referrer`, e di base `noindex` per i motori di ricerca, disattivabile. Le date del feed sono arrotondate al giorno e i file nello zip hanno una data fissa, in UTC: un orario preciso direbbe quando lavora la redazione e in quale fuso orario vive.
+
+Se modifichi un'uscita dopo averla pubblicata, l'archivio la segna "da aggiornare" finché non la ripubblichi. Ritirarla la toglie dal pacchetto successivo; le copie già caricate online vanno aggiornate a mano.
+
+Queste protezioni riguardano chi legge. Chi ospita i file vede comunque gli indirizzi dei visitatori.
 
 ## Sicurezza
 
@@ -129,7 +150,7 @@ Già inclusi e attivi anche senza `.htaccess.example`:
 | `assets/newspaper.css` | Aspetto del giornale, stampa normale, libretto, bianco e nero |
 | `assets/images.js` | Preparazione delle immagini nel browser e retinature |
 | `api/lib.php` | Funzioni condivise: database, migrazioni automatiche, testo, statistiche, immagini |
-| `api/*.php` | Endpoint JSON: uscite, ricerca, parole chiave, revisioni, bozza, impostazioni, immagini, backup |
+| `api/*.php` | Endpoint JSON: uscite, ricerca, parole chiave, revisioni, bozza, impostazioni, immagini, backup, pubblicazione |
 | `uploads/` | Immagini caricate |
 
 Tutto il contenuto di un numero è serializzato come JSON in un'unica colonna `content`, con le immagini come percorsi in `uploads/`. Lo schema del database è versionato (`PRAGMA user_version`) e migrato automaticamente.

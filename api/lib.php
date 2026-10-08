@@ -2,7 +2,7 @@
 // lib.php – funzioni condivise dagli endpoint in api/.
 // Non va mai richiesto direttamente: è bloccato da api/.htaccess.
 
-const EZINE_SCHEMA_VERSION = 2;
+const EZINE_SCHEMA_VERSION = 3;
 
 // Campi che contengono testo scritto davvero dall'autore. Tutto il resto del
 // contenuto (nomi dei campi, valori di servizio come "normal"/"none", percorsi
@@ -66,6 +66,18 @@ function ezine_migra(SQLite3 $db): void {
             $agg->execute();
             $agg->reset();
         }
+    }
+    if ($versione < 3) {
+        // Istantanee pubblicate: HTML autonomo di ciascuna uscita, conservato qui
+        // (dietro login) e servito solo dentro il pacchetto del sito pubblico.
+        $db->exec("CREATE TABLE IF NOT EXISTS publications (
+            issue_id INTEGER PRIMARY KEY REFERENCES issues(id) ON DELETE CASCADE,
+            slug TEXT NOT NULL UNIQUE,
+            title TEXT, anno TEXT, numero TEXT, data TEXT,
+            html TEXT NOT NULL,
+            published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            source_updated_at TEXT
+        )");
     }
     $db->exec('PRAGMA user_version = ' . EZINE_SCHEMA_VERSION);
     $db->exec('COMMIT');
@@ -153,6 +165,31 @@ function ezine_salva_revisione(SQLite3 $db, int $issueId, string $motivo): void 
                           SELECT id FROM issue_revisions WHERE issue_id = :id ORDER BY id DESC LIMIT 30)");
     $st->bindValue(':id', $issueId, SQLITE3_INTEGER);
     $st->execute();
+}
+
+// ---------- pubblicazione ----------
+
+function ezine_config_pubblicazione(SQLite3 $db): array {
+    $v = $db->querySingle("SELECT value FROM settings WHERE key = 'publishing'");
+    $c = $v ? json_decode($v, true) : [];
+    return ['publicUrl' => (string) ($c['publicUrl'] ?? ''), 'noindex' => (bool) ($c['noindex'] ?? true)];
+}
+
+// Nome di file leggibile e stabile per un'uscita pubblicata: anno-i-numero-3.html
+function ezine_slug(SQLite3 $db, int $issueId, string $anno, string $numero): string {
+    $base = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower(
+        iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', "anno $anno numero $numero") ?: '')), '-');
+    if ($base === '' || $base === 'anno-numero') $base = "uscita-$issueId";
+    $slug = $base;
+    $st = $db->prepare('SELECT 1 FROM publications WHERE slug = :s AND issue_id != :id');
+    $st->bindValue(':id', $issueId, SQLITE3_INTEGER);
+    for ($n = 2; ; $n++) {
+        $st->bindValue(':s', $slug, SQLITE3_TEXT);
+        $occupato = $st->execute()->fetchArray();
+        $st->reset();
+        if (!$occupato) return $slug;
+        $slug = "$base-$n";
+    }
 }
 
 // ---------- immagini ----------

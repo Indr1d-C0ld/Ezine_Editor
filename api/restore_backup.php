@@ -28,7 +28,7 @@ $json = $zip->getFromName('archive.json');
 $dati = $json !== false ? json_decode($json, true) : null;
 if (!is_array($dati) || ($dati['format'] ?? '') !== 'ezine-backup') ezine_errore('archive.json mancante o non riconosciuto', 400);
 
-$esito = ['issues_imported' => 0, 'issues_skipped' => 0, 'revisions_imported' => 0,
+$esito = ['issues_imported' => 0, 'issues_skipped' => 0, 'revisions_imported' => 0, 'publications_imported' => 0,
           'images_imported' => 0, 'images_skipped' => 0, 'images_invalid' => 0, 'settings_restored' => false];
 
 foreach ($immagini as $nome => $indice) {
@@ -84,6 +84,28 @@ foreach ($dati['revisions'] ?? [] as $r) {
     $insRev->execute();
     $insRev->reset();
     $esito['revisions_imported']++;
+}
+
+// Le pubblicazioni seguono le uscite importate ora (stato "pubblicata" incluso).
+$insPub = $db->prepare('INSERT OR IGNORE INTO publications (issue_id, slug, title, anno, numero, data, html, published_at, source_updated_at)
+                        VALUES (:id, :slug, :title, :anno, :numero, :data, :html, :pub, :src)');
+foreach ($dati['publications'] ?? [] as $p) {
+    if (!is_array($p) || !isset($mappaId[$p['issue_id'] ?? null], $p['html'])) continue;
+    $nuovo = $mappaId[$p['issue_id']];
+    $insPub->bindValue(':id', $nuovo, SQLITE3_INTEGER);
+    $insPub->bindValue(':slug', ezine_slug($db, $nuovo, (string) ($p['anno'] ?? ''), (string) ($p['numero'] ?? '')), SQLITE3_TEXT);
+    $insPub->bindValue(':title', $p['title'] ?? null, SQLITE3_TEXT);
+    $insPub->bindValue(':anno', $p['anno'] ?? '', SQLITE3_TEXT);
+    $insPub->bindValue(':numero', $p['numero'] ?? '', SQLITE3_TEXT);
+    $insPub->bindValue(':data', $p['data'] ?? '', SQLITE3_TEXT);
+    $insPub->bindValue(':html', $p['html'], SQLITE3_TEXT);
+    $insPub->bindValue(':pub', $p['published_at'] ?? gmdate('Y-m-d H:i:s'), SQLITE3_TEXT);
+    // le uscite vengono importate con il loro updated_at originale: conservando
+    // anche questo valore, lo stato "da aggiornare" resta quello del backup
+    $insPub->bindValue(':src', $p['source_updated_at'] ?? null, SQLITE3_TEXT);
+    $insPub->execute();
+    $insPub->reset();
+    $esito['publications_imported']++;
 }
 
 $vuote = !$db->querySingle("SELECT 1 FROM settings WHERE key = 'masthead'");

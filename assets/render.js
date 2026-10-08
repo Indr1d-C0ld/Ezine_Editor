@@ -368,9 +368,16 @@
   // ne basta una versione a 120px.
   async function logoUri(src) {
     try {
-      const img = new Image();
-      img.src = src;
-      await img.decode();
+      // onload e non img.decode(): in una scheda non visibile decode() viene
+      // rimandato a tempo indeterminato, e "Esporta" o "Pubblica" resterebbero
+      // fermi finché non si torna sulla scheda.
+      const img = await new Promise((ok, ko) => {
+        const i = new Image();
+        const t = setTimeout(() => ko(new Error('logo non caricato')), 8000);
+        i.onload = () => { clearTimeout(t); ok(i); };
+        i.onerror = () => { clearTimeout(t); ko(new Error('logo non leggibile')); };
+        i.src = src;
+      });
       const h = 120, k = h / img.naturalHeight;
       const c = document.createElement('canvas');
       c.width = Math.round(img.naturalWidth * k);

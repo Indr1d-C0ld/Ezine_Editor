@@ -42,6 +42,12 @@
     .dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #e9e2cf; border-bottom: 1px solid #aaa; }
     .dlg-body { padding: 14px; max-height: 70vh; overflow: auto; }
     .rev { display: flex; justify-content: space-between; gap: 10px; align-items: center; border-bottom: 1px dashed #bbb; padding: 7px 0; font-size: 0.85rem; }
+    .pub { font-size: 0.75rem; white-space: nowrap; }
+    .pub.on { color: #1c6544; font-weight: bold; }
+    .pub.stale { color: #8a5200; font-weight: bold; }
+    .tool.wide { grid-column: 1 / -1; }
+    .tool input[type=url] { width: 100%; margin: 4px 0; }
+    .note { font-size: 0.75rem; background: #fff1c9; border: 1px solid #d9b44a; padding: 6px 8px; margin: 8px 0; }
     /* senza questa regola "display: inline-block" dei pulsanti vince su hidden */
     [hidden] { display: none !important; }
   </style>
@@ -65,7 +71,7 @@
   <div class="table-wrap">
     <table id="archiveTable">
       <thead>
-        <tr><th>ID</th><th>Titolo</th><th>Data uscita</th><th>Ultima modifica</th><th>Parole</th><th>Caratteri</th><th>Azioni</th></tr>
+        <tr><th>ID</th><th>Titolo</th><th>Data uscita</th><th>Ultima modifica</th><th>Parole</th><th>Caratteri</th><th>Sito</th><th>Azioni</th></tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -73,6 +79,18 @@
   <div class="empty" id="emptyMsg" hidden>Nessuna uscita in archivio.</div>
 
   <div class="tools">
+    <div class="tool wide">
+      <h2>🌐 Sito pubblico</h2>
+      <p>Le uscite pubblicate formano un sito statico, che <b>questo server non serve mai</b>: lo scarichi e lo carichi su un hosting statico o un servizio onion. Ogni pagina è autonoma e non fa contattare a chi legge nessun sito terzo.</p>
+      <p id="pubSummary">Caricamento…</p>
+      <div class="note" id="pubContactNote" hidden></div>
+      <label style="display:block;font-size:0.8rem">Indirizzo pubblico del sito (facoltativo: serve solo al feed RSS)
+        <input type="url" id="pubUrl" placeholder="https://… oppure http://….onion/"></label>
+      <label style="display:block;font-size:0.8rem;margin-top:4px"><input type="checkbox" id="pubNoindex"> Escludi dai motori di ricerca</label>
+      <button id="pubSaveBtn" class="secondary">Salva impostazioni</button>
+      <a class="btn" id="pubDownload" href="api/site_package.php">Scarica il sito (.zip)</a>
+      <div class="result" id="pubResult"></div>
+    </div>
     <div class="tool">
       <h2>💾 Backup</h2>
       <p>Un unico file .zip con uscite, cronologia delle versioni, impostazioni della testata e immagini caricate.</p>
@@ -110,6 +128,7 @@
   const $ = id => document.getElementById(id);
   let allIssues = [];
   let settings = Ezine.masthead();
+  let published = new Map();   // issue_id -> pubblicazione
 
   async function api(path, opts = {}) {
     const res = await fetch(path, opts);
@@ -138,6 +157,11 @@
       row.insertCell().textContent = fmtDate(issue.updated_at);
       const w = row.insertCell(); w.className = 'num'; w.textContent = issue.word_count ?? '';
       const c = row.insertCell(); c.className = 'num'; c.textContent = issue.char_count ?? '';
+      const pub = published.get(issue.id);
+      const sc = row.insertCell();
+      sc.className = 'pub' + (pub ? (pub.stale ? ' stale' : ' on') : '');
+      sc.textContent = pub ? (pub.stale ? 'da aggiornare' : 'pubblicata') : '—';
+      if (pub) sc.title = `${pub.slug}.html · pubblicata il ${fmtDate(pub.published_at)}${pub.stale ? ' · modificata dopo la pubblicazione' : ''}`;
       const actions = row.insertCell();
       actions.className = 'actions';
       const add = (label, fn, cls) => {
@@ -152,11 +176,74 @@
       add('📄 Duplica', () => { location.href = `index.html?from=${issue.id}`; }, 'secondary');
       add('🕘 Cronologia', () => showRevisions(issue));
       add('🖨️ Stampa', () => openRendered(issue.id, true));
+      if (pub) {
+        add('🔁 Ripubblica', () => publish(issue));
+        add('⛔ Ritira', () => unpublish(issue), 'secondary');
+      } else {
+        add('🌐 Pubblica', () => publish(issue));
+      }
       add('🗑️ Elimina', () => deleteIssue(issue));
     }
   }
 
+  async function loadPublications() {
+    try {
+      const r = await api('api/publications.php');
+      published = new Map(r.items.map(p => [p.issue_id, p]));
+      $('pubUrl').value = r.config.publicUrl;
+      $('pubNoindex').checked = r.config.noindex;
+      const n = r.items.length, stale = r.items.filter(p => p.stale).length;
+      $('pubSummary').textContent = n
+        ? `${n} uscit${n === 1 ? 'a pubblicata' : 'e pubblicate'}${stale ? `, di cui ${stale} modificat${stale === 1 ? 'a' : 'e'} dopo la pubblicazione (va ripubblicat${stale === 1 ? 'a' : 'e'} per aggiornare il sito)` : ''}.`
+        : 'Nessuna uscita pubblicata: usa “🌐 Pubblica” nella tabella.';
+      $('pubDownload').hidden = n === 0;
+      const contatto = (settings.contact || '').trim();
+      $('pubContactNote').hidden = !contatto;
+      $('pubContactNote').textContent = `Le pagine pubblicate mostrano il contatto “${contatto}” impostato nella testata. Se non vuoi diffonderlo, svuota il campo nelle impostazioni dell'editor e ripubblica.`;
+    } catch (e) { $('pubSummary').textContent = 'Stato della pubblicazione non disponibile: ' + e.message; }
+  }
+
+  function externalImages(content) {
+    const c = Ezine.normalize(content);
+    const arts = [c.fullWidth, ...c.colLeft, ...c.colRight, ...c.pages.flatMap(p => p.articles)].filter(Boolean);
+    return arts.filter(a => /^https?:\/\//i.test(a.image || '')).map(a => a.image);
+  }
+
+  async function publish(issue) {
+    try {
+      const r = await api(`api/load_issue.php?id=${issue.id}`);
+      const ext = externalImages(r.content);
+      if (ext.length && !confirm(`L'uscita contiene ${ext.length} immagin${ext.length === 1 ? 'e esterna' : 'i esterne'}.\n\nNella versione pubblica non verr${ext.length === 1 ? 'à mostrata' : 'anno mostrate'}: i lettori dovrebbero scaricarle da siti terzi, che vedrebbero il loro indirizzo IP. Per includerle, caricale dal computer nell'editor.\n\nPubblicare comunque?`)) return;
+      const mh = r.content.masthead || settings;
+      const h = Ezine.normalize(r.content).header;
+      const html = await Ezine.exportDocument(r.content, mh, { title: `${Ezine.masthead(mh).fullName} – Anno ${h.anno} N. ${h.numero}` });
+      const out = await postJson('api/publish.php', { issue_id: issue.id, html });
+      await loadPublications();
+      renderTable(allIssues);
+      $('pubResult').textContent = `Uscita #${issue.id} pubblicata come ${out.slug}.html. Scarica di nuovo il sito per aggiornare la copia online.`;
+    } catch (e) { alert('Pubblicazione non riuscita: ' + e.message); }
+  }
+
+  async function unpublish(issue) {
+    if (!confirm(`Ritirare l'uscita #${issue.id} dal sito pubblico?\n\nSparirà dal prossimo pacchetto scaricato. Le copie già caricate online vanno aggiornate a mano.`)) return;
+    try {
+      await postJson('api/publish.php', { issue_id: issue.id, action: 'unpublish' });
+      await loadPublications();
+      renderTable(allIssues);
+      $('pubResult').textContent = `Uscita #${issue.id} ritirata.`;
+    } catch (e) { alert('Ritiro non riuscito: ' + e.message); }
+  }
+
+  async function savePublishing() {
+    try {
+      const r = await postJson('api/publications.php', { config: { publicUrl: $('pubUrl').value.trim(), noindex: $('pubNoindex').checked } });
+      $('pubUrl').value = r.config.publicUrl;
+      $('pubResult').textContent = 'Impostazioni del sito salvate.' + (r.config.publicUrl ? ' Il pacchetto includerà il feed RSS.' : ' Senza indirizzo pubblico il pacchetto non include il feed RSS.');
+    } catch (e) { $('pubResult').textContent = 'Impostazioni non salvate: ' + e.message; }
+  }
+
   async function loadStats() {
+    await loadPublications();
     try {
       allIssues = await api('api/list_issues.php');
       renderTable(allIssues);
@@ -203,7 +290,8 @@
   }
 
   async function deleteIssue(issue) {
-    if (!confirm(`Eliminare l'uscita #${issue.id} «${issue.title}»?\n\nVerrà eliminata anche la sua cronologia. Le immagini restano finché non usi la pulizia.`)) return;
+    const pubNote = published.has(issue.id) ? '\nÈ pubblicata: sparirà anche dal sito pubblico al prossimo pacchetto.' : '';
+    if (!confirm(`Eliminare l'uscita #${issue.id} «${issue.title}»?\n\nVerrà eliminata anche la sua cronologia. Le immagini restano finché non usi la pulizia.${pubNote}`)) return;
     try { await postJson('api/delete_issue.php', { id: issue.id }); loadStats(); }
     catch (e) { alert('Eliminazione non riuscita: ' + e.message); }
   }
@@ -273,6 +361,7 @@
       $('restoreResult').textContent =
         `Uscite aggiunte: ${r.issues_imported} (già presenti, saltate: ${r.issues_skipped})\n` +
         `Versioni in cronologia: ${r.revisions_imported}\n` +
+        `Pubblicazioni: ${r.publications_imported}\n` +
         `Immagini aggiunte: ${r.images_imported} (già presenti: ${r.images_skipped}${r.images_invalid ? `, non valide: ${r.images_invalid}` : ''})\n` +
         `Impostazioni: ${r.settings_restored ? 'ripristinate' : 'invariate'}`;
       loadStats();
@@ -307,6 +396,7 @@
   $('restoreBtn').addEventListener('click', restore);
   $('cleanupCheckBtn').addEventListener('click', cleanupCheck);
   $('cleanupDoBtn').addEventListener('click', cleanupDo);
+  $('pubSaveBtn').addEventListener('click', savePublishing);
 
   (async () => {
     try { settings = Ezine.masthead((await api('api/settings.php')).masthead); } catch (e) { /* valori neutri */ }

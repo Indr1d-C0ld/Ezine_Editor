@@ -21,6 +21,7 @@ $archivio = [
     'revisions' => $righe('SELECT * FROM issue_revisions ORDER BY id'),
     'settings' => $righe('SELECT * FROM settings'),
     'draft' => $righe('SELECT * FROM drafts'),
+    'publications' => $righe('SELECT * FROM publications ORDER BY issue_id'),
 ];
 
 $tmp = tempnam(sys_get_temp_dir(), 'ezine');
