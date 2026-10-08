@@ -15,6 +15,7 @@
 #                            ricerca, immagini e metadati, pubblicazione, backup
 #   - tests/render_test.mjs  il motore di impaginazione (richiede Node; se manca
 #                            viene saltato con un avviso)
+#   - tests/history_test.mjs annulla e ripeti dell'editor (anche questo con Node)
 #
 # Le regole di Apache (.htaccess, autenticazione, header) il server di prova non
 # le applica: per quelle c'è tests/check_apache.sh, da lanciare sul sito vero.
@@ -75,9 +76,10 @@ php "$QUI/api_test.php" "http://127.0.0.1:$PORTA" "$COPIA" || fallito
 
 if command -v node >/dev/null 2>&1; then
     node "$QUI/render_test.mjs" || fallito
+    node "$QUI/history_test.mjs" || fallito
 else
     echo
-    echo "── Impaginazione: saltata, Node non è installato"
+    echo "── Impaginazione e annulla/ripeti: saltati, Node non è installato"
 fi
 
 # Errori PHP finiti nel log del server (avvisi, eccezioni non gestite).

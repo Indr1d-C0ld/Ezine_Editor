@@ -31,6 +31,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - Prima pagina classica (articolo a tutta larghezza, due colonne, riquadro, tre colonne di brevi, consiglio, piè di pagina) più **pagine interne** a 1–3 colonne, con il testo che scorre da una colonna all'altra
 - L'anteprima mostra ciò che stai scrivendo mentre lo scrivi, tratteggiato finché non lo aggiungi
 - Articoli spostabili trascinandoli, anche fra colonne e pagine diverse
+- **Annulla e ripeti** (pulsanti o Ctrl+Z / Ctrl+Y) per ogni modifica al numero: articoli aggiunti, modificati, eliminati o spostati, pagine, testata, perfino "ricomincia dal contenuto di esempio" e l'apertura di un'altra uscita. I tasti battuti di seguito nello stesso campo contano come un passo solo. La cronologia vive nella pagina: ricaricando riparte vuota
 - Testo in **Markdown essenziale** (`**grassetto**`, `*corsivo*`, `[link](https://…)`, riga vuota = nuovo paragrafo), con barra dei comandi. L'HTML scritto a mano viene filtrato: restano solo i tag di formattazione
 - Testata configurabile dall'interfaccia: nome a due colori, motto, sottotitolo, contatto, prezzo, nota a piè di pagina, logo, titoli delle sezioni
 
@@ -183,6 +184,7 @@ Esegue tutti i test su una **copia temporanea** dell'app, con un database vuoto 
 
 - `tests/api_test.php` verifica il backend via HTTP: uscite e statistiche, cronologia e conflitti, ricerca con occorrenze e parole intere, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione, pacchetto del sito e feed, backup e ripristino, compresi backup ostili e zip-slip.
 - `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, adattamento all'A4, protezione degli indirizzi email, ordine del libretto, filtro dell'HTML in ogni campo di testo. Se Node manca viene saltato.
+- `tests/history_test.mjs` verifica annulla e ripeti, sempre con Node: passi, limite della cronologia, modifiche che non cambiano nulla, tasti raggruppati, ritorno all'uscita aperta prima.
 
 Il server di prova gira apposta in un fuso orario lontano da UTC, così un errore legato all'ora locale non passa inosservato. Servono le estensioni PHP dell'app più `exif`, usata per controllare i metadati.
 
@@ -203,6 +205,7 @@ Controlla autenticazione, file che non devono mai essere serviti (database, `.ht
 | `assets/render.js` | Unico motore di impaginazione, usato da editor, archivio, esportazione e stampa |
 | `assets/newspaper.css` | Aspetto del giornale, stampa normale, libretto, bianco e nero |
 | `assets/images.js` | Preparazione delle immagini nel browser e retinature |
+| `assets/history.js` | Annulla e ripeti dell'editor |
 | `api/lib.php` | Funzioni condivise: database, migrazioni automatiche, testo, statistiche, immagini |
 | `api/*.php` | Endpoint JSON: uscite, ricerca, parole chiave, revisioni, bozza, impostazioni, immagini, backup, pubblicazione |
 | `uploads/` | Immagini caricate |

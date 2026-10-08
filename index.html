@@ -50,6 +50,9 @@
     .status { background: #cfd8dc; padding: 5px 8px; font-size: 0.75rem; margin-bottom: 4px; border-radius: 3px; }
     .status.warn, .warn { background: #fff1c9; border: 1px solid #d9b44a; padding: 6px 8px; font-size: 0.75rem; border-radius: 3px; margin-top: 6px; }
     .status.edit { background: #e9e2cf; }
+    /* resta in vista mentre si scorre la colonna dei comandi */
+    .undo-bar { display: flex; gap: 4px; margin-bottom: 6px; position: sticky; top: 0; z-index: 3; background: #f0ede8; padding: 4px 0; }
+    .undo-bar button { flex: 1; margin: 0; }
     .hint { font-size: 0.72rem; color: #555; margin-top: 4px; }
     .md-bar { display: flex; gap: 4px; margin-top: 4px; }
     .md-bar button { margin: 0; padding: 2px 9px; background: #6d6d6d; font-family: Georgia, serif; }
@@ -95,6 +98,10 @@
     <h1 class="app-title" id="appTitle">Editor</h1>
     <div class="status" id="draftStatus">Caricamento…</div>
     <div class="status edit" id="editStatus" hidden></div>
+    <div class="undo-bar">
+      <button type="button" id="undoBtn" class="secondary" disabled>↶ Annulla</button>
+      <button type="button" id="redoBtn" class="secondary" disabled>↷ Ripeti</button>
+    </div>
 
     <details class="panel" open>
       <summary>📅 Testata del numero</summary>
@@ -261,6 +268,7 @@
 
 <script src="assets/render.js"></script>
 <script src="assets/images.js"></script>
+<script src="assets/history.js"></script>
 <script>
 (() => {
   'use strict';
@@ -485,6 +493,7 @@
       $('newText').focus();
       return;
     }
+    checkpoint(editing ? `modifica in ${locLabel(editing.loc)}` : `aggiunta in ${locLabel(f.loc)}`);
     applyForm(content, f, editing);
     endEdit();
     commit();
@@ -660,6 +669,7 @@
   // nell'ordine originale; le sezioni fisse della prima pagina non si spostano.
   function relieve(n) {
     if (editing) endEdit();
+    checkpoint(`alleggerimento della pagina ${n + 1}`);
     let spostati = 0;
     for (let guard = 0; guard < 80; guard++) {
       const m = measurePages(content)[n];
@@ -686,8 +696,12 @@
 
   // ---------- azioni dentro l'anteprima ----------
 
+  const ACT_LABEL = { delete: 'eliminazione', up: 'spostamento', down: 'spostamento', hide: 'consiglio nascosto',
+                      enable: 'consiglio riattivato', reset: 'riquadro ripristinato' };
+
   function onPreviewAction(act, loc, index) {
     const list = listOf(content, loc);
+    if (ACT_LABEL[act]) checkpoint(`${ACT_LABEL[act]} in ${locLabel(loc)}`);
     switch (act) {
       case 'edit': loadForEdit(loc, index); return;
       case 'delete':
@@ -752,6 +766,7 @@
       const a = e.target.closest('article[data-index]');
       const from = listOf(content, drag.loc), dest = listOf(content, to);
       let at = a && a.dataset.loc === to ? Number(a.dataset.index) : dest.length;
+      checkpoint(`trascinamento in ${locLabel(to)}`);
       const [moved] = from.splice(drag.index, 1);
       if (from === dest && drag.index < at) at--;
       dest.splice(at, 0, moved);
@@ -776,17 +791,20 @@
         <span><button type="button" title="Sposta su" data-pa="up">⬆️</button><button type="button" title="Elimina" data-pa="del">🗑️</button></span>`;
       const [title, cols] = [row.querySelector('input'), row.querySelector('select')];
       title.value = p.title; cols.value = String(p.columns);
-      title.addEventListener('input', () => { p.title = title.value; commit({ keepTargets: true }); });
-      cols.addEventListener('change', () => { p.columns = Number(cols.value); commit(); });
+      title.addEventListener('input', () => {
+        checkpoint(`titolo della pagina ${i + 2}`, `pageTitle:${i}`);
+        p.title = title.value; commit({ keepTargets: true });
+      });
+      cols.addEventListener('change', () => { checkpoint(`colonne della pagina ${i + 2}`); p.columns = Number(cols.value); commit(); });
       row.querySelector('[data-pa="up"]').disabled = i === 0;
       row.addEventListener('click', e => {
         const b = e.target.closest('[data-pa]');
         if (!b) return;
+        if (b.dataset.pa === 'del' && p.articles.length &&
+            !confirm(`La pagina ${i + 2} contiene ${p.articles.length} articol${p.articles.length === 1 ? 'o' : 'i'}. Eliminarla?`)) return;
+        checkpoint(`${b.dataset.pa === 'del' ? 'eliminazione' : 'spostamento'} della pagina ${i + 2}`);
         if (b.dataset.pa === 'up' && i > 0) [content.pages[i - 1], content.pages[i]] = [content.pages[i], content.pages[i - 1]];
-        if (b.dataset.pa === 'del') {
-          if (p.articles.length && !confirm(`La pagina ${i + 2} contiene ${p.articles.length} articol${p.articles.length === 1 ? 'o' : 'i'}. Eliminarla?`)) return;
-          content.pages.splice(i, 1);
-        }
+        if (b.dataset.pa === 'del') content.pages.splice(i, 1);
         if (editing) endEdit();
         commit();
       });
@@ -797,6 +815,8 @@
   // ---------- stato, bozza e salvataggio ----------
 
   function commit(opts = {}) {
+    hist.settle(content);
+    updateUndoUi();
     dirty = true;
     saveLocal();
     saveDraftSoon();
@@ -805,6 +825,64 @@
     refreshFormVisibility();
     updateIssueUi();
     renderPreview();
+  }
+
+  // ---------- annulla e ripeti ----------
+
+  // Ogni modifica al numero chiama checkpoint() prima di cambiarlo e commit()
+  // dopo. Si annulla il contenuto del numero; se il passo annullato aveva
+  // cambiato uscita (apri dall'archivio, nuovo numero, contenuto di esempio)
+  // tornano anche il collegamento all'uscita e il suo titolo. Le impostazioni
+  // della testata, comuni a tutti i numeri, restano fuori.
+  const hist = EzineHistory.create({ limit: 100 });
+
+  function snapshot() {
+    return { content, issue: Object.assign({}, issue), title: $('issueTitle').value, dirty };
+  }
+  function checkpoint(label, key) { hist.checkpoint(snapshot(), label, key); }
+
+  function restoreState(s) {
+    content = Ezine.normalize(s.content);
+    if (s.issue.id !== issue.id) {
+      issue = Object.assign({}, s.issue);
+      $('issueTitle').value = s.title;
+      dirty = s.dirty;
+    } else {
+      // Stessa uscita: resta la data dell'ultimo salvataggio, altrimenti il
+      // prossimo aggiornamento segnalerebbe un conflitto inesistente.
+      dirty = true;
+    }
+    if (editing) endEdit();
+    fillHeaderFields(); applyIdentity();
+    saveLocal(); saveDraftSoon();
+    rebuildTargets(); renderPagesList(); refreshFormVisibility(); updateIssueUi(); renderPreview();
+    updateUndoUi();
+  }
+
+  function undoRedo(redo) {
+    const r = redo ? hist.redo(snapshot()) : hist.undo(snapshot());
+    if (r) restoreState(r.state);
+  }
+
+  function updateUndoUi() {
+    $('undoBtn').disabled = !hist.canUndo();
+    $('redoBtn').disabled = !hist.canRedo();
+    $('undoBtn').title = hist.canUndo() ? `Annulla: ${hist.undoLabel()} (Ctrl+Z)` : 'Niente da annullare';
+    $('redoBtn').title = hist.canRedo() ? `Ripeti: ${hist.redoLabel()} (Ctrl+Y)` : 'Niente da ripetere';
+  }
+
+  // Ctrl+Z / Ctrl+Y (o Ctrl+Maiusc+Z; Cmd su Mac). Dentro un campo di testo
+  // resta l'annulla del browser, che corregge solo quello che stai scrivendo.
+  function onUndoKey(e) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'z' && k !== 'y') return;
+    const t = e.target;
+    const typing = t.isContentEditable || t.tagName === 'TEXTAREA' ||
+      (t.tagName === 'INPUT' && !['checkbox', 'radio', 'color', 'file', 'button', 'submit', 'range'].includes(t.type));
+    if (typing) return;
+    e.preventDefault();
+    undoRedo(k === 'y' || e.shiftKey);
   }
 
   function draftPayload() {
@@ -934,6 +1012,7 @@
 
   function startNextIssue() {
     if (dirty && issue.id != null && !confirm('Ci sono modifiche non archiviate nell\'uscita corrente. Iniziare comunque il numero successivo?')) return;
+    checkpoint('nuovo numero');
     content = Ezine.normalize(nextNumberFrom(content));
     issue = { id: null, updatedAt: null };
     $('issueTitle').value = '';
@@ -946,6 +1025,7 @@
     if (dirty && issue.id !== id && !confirm('La bozza in corso ha modifiche non archiviate e verrà sostituita. Continuare?')) return;
     try {
       const r = await api(`api/load_issue.php?id=${id}`);
+      checkpoint(mode === 'duplicate' ? `nuovo numero dall'uscita #${id}` : `apertura dell'uscita #${id}`);
       if (mode === 'duplicate') {
         content = Ezine.normalize(nextNumberFrom(r.content));
         issue = { id: null, updatedAt: null };
@@ -961,6 +1041,7 @@
       endEdit(); fillHeaderFields();
       saveLocal(); saveDraftNow();
       rebuildTargets(); renderPagesList(); updateIssueUi(); renderPreview();
+      hist.settle(content); updateUndoUi();
     } catch (e) { alert('Impossibile aprire l\'uscita: ' + e.message); }
   }
 
@@ -1037,8 +1118,14 @@
   // ---------- avvio ----------
 
   function bindUi() {
-    for (const id of ['anno', 'numero', 'data']) $(id).addEventListener('input', () => { content.header[id] = $(id).value; commit({ keepTargets: true }); });
-    $('titleColor').addEventListener('input', () => { content.header.titleColor = $('titleColor').value; applyIdentity(); commit({ keepTargets: true }); });
+    for (const id of ['anno', 'numero', 'data']) $(id).addEventListener('input', () => {
+      checkpoint(`${$(id).labels[0].textContent.toLowerCase()} della testata`, `header:${id}`);
+      content.header[id] = $(id).value; commit({ keepTargets: true });
+    });
+    $('titleColor').addEventListener('input', () => {
+      checkpoint('colore del nome', 'titleColor');
+      content.header.titleColor = $('titleColor').value; applyIdentity(); commit({ keepTargets: true });
+    });
 
     $('targetSection').addEventListener('change', () => { refreshFormVisibility(); renderPreview(); });
     const formFields = ['newTitle', 'newText', 'newKicker', 'kickerSelect', 'newByline', 'imageFloat', 'imagePosition',
@@ -1057,6 +1144,7 @@
     $('addContentBtn').addEventListener('click', addOrUpdate);
     $('cancelEditBtn').addEventListener('click', () => { endEdit(); renderPreview(); });
     $('addPageBtn').addEventListener('click', () => {
+      checkpoint('nuova pagina');
       content.pages.push({ title: '', columns: 2, articles: [] });
       commit();
       $('targetSection').value = `page:${content.pages.length - 1}`;
@@ -1070,7 +1158,7 @@
     $('issueTitle').addEventListener('input', () => { saveLocal(); saveDraftSoon(); });
 
     $('bwMode').addEventListener('change', renderPreview);
-    $('autoFit').addEventListener('change', () => { content.autoFit = $('autoFit').checked; commit({ keepTargets: true }); });
+    $('autoFit').addEventListener('change', () => { checkpoint('adattamento all\'A4'); content.autoFit = $('autoFit').checked; commit({ keepTargets: true }); });
     $('printBtn').addEventListener('click', () => openPrint('normal'));
     $('bookletBtn').addEventListener('click', () => openPrint('booklet'));
     $('exportBtn').addEventListener('click', exportHtml);
@@ -1088,12 +1176,17 @@
     });
 
     $('resetAllBtn').addEventListener('click', () => {
-      if (!confirm('Sostituire il numero in lavorazione con il contenuto di esempio?')) return;
+      if (!confirm('Sostituire il numero in lavorazione con il contenuto di esempio?\n\nSi può tornare indietro con ↶ Annulla, finché non ricarichi la pagina.')) return;
+      checkpoint('contenuto di esempio');
       content = exampleContent();
       issue = { id: null, updatedAt: null };
       $('issueTitle').value = '';
       endEdit(); fillHeaderFields(); commit();
     });
+
+    $('undoBtn').addEventListener('click', () => undoRedo(false));
+    $('redoBtn').addEventListener('click', () => undoRedo(true));
+    document.addEventListener('keydown', onUndoKey);
 
     setupPreviewEvents();
     window.addEventListener('resize', debounce(fitPreview, 100));
@@ -1132,6 +1225,7 @@
     renderPagesList();
     refreshFormVisibility();
     updateIssueUi();
+    updateUndoUi();
     renderPreview();
 
     const q = new URLSearchParams(location.search);
