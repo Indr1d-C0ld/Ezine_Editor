@@ -74,6 +74,10 @@
 .newspaper .byline { font-size: 0.7rem; font-weight: bold; border-bottom: 1px dotted #aaa; margin-bottom: 0.4rem; display: inline-block; }
 .newspaper p { font-size: 0.82rem; text-align: justify; margin-bottom: 0.6rem; hyphens: auto; }
 .newspaper a { color: inherit; text-decoration: underline; }
+/* frammenti che proteggono gli indirizzi email dai raccoglitori (vedi
+   obfuscateEmails in render.js): hidden li nasconde già, questa regola li
+   tiene nascosti anche se un altro stile cambiasse il display degli span */
+.newspaper .ez-esca { display: none !important; }
 .newspaper .feature-box { border: 2px solid var(--ink); padding: 0.8rem; background: #f4efdf; margin: 1rem 0; }
 .newspaper .feature-box h3 { font-size: 1rem; font-weight: 800; text-transform: uppercase; background: var(--ink); color: var(--paper); display: inline-block; padding: 0.1rem 0.4rem; letter-spacing: 1px; margin-bottom: 0.5rem; }
 .newspaper hr { margin: 1rem 0; border: none; border-top: 1px solid #222; }

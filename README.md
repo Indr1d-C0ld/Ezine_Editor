@@ -55,6 +55,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - Le uscite scelte formano un **sito statico da scaricare** (indice, una pagina per uscita, feed RSS, robots.txt), da caricare su qualunque hosting statico o servizio onion
 - Pagine blindate: una Content-Security-Policy impedisce a chi legge di contattare qualunque sito terzo; niente script, niente referrer, date senza orario
 - Pagine leggere: le immagini diventano file separati (una sola copia per quelle ripetute, come il logo), le foto vengono ridotte per lo schermo e caricate solo quando servono
+- Indirizzi email protetti dai programmi che li raccolgono per lo spam, senza script: chi legge li vede e li copia normalmente
 
 ## Requisiti
 
@@ -130,6 +131,8 @@ Le istantanee salvate hanno le immagini incorporate; nel pacchetto vengono estra
 
 Ogni pagina porta una Content-Security-Policy (`default-src 'none'; img-src 'self' data:`) che ammette solo le immagini del sito stesso e impedisce al browser di chi legge qualunque richiesta esterna. Un'immagine esterna rimasta in un articolo non viene caricata, e l'archivio avvisa prima di pubblicare. Le immagini del sito si vedono anche aprendo le pagine direttamente dal disco: verificato con Chromium e Firefox. Niente script, `no-referrer`, e di base `noindex` per i motori di ricerca, disattivabile. Le date del feed sono arrotondate al giorno e i file nello zip hanno una data fissa, in UTC: un orario preciso direbbe quando lavora la redazione e in quale fuso orario vive.
 
+**Indirizzi email.** Nell'export e nelle pagine pubblicate ogni indirizzo email presente nel testo, compreso il contatto della testata, viene spezzato con frammenti nascosti (`hidden`), e `@` e `.` vengono scritti come entità HTML. Chi legge vede e copia l'indirizzo esatto: i frammenti nascosti non finiscono negli appunti né nella lettura vocale, verificato con Firefox e Chromium. Nel sorgente invece l'indirizzo intero non esiste, quindi i programmi che raccolgono email per lo spam non lo trovano; e chi toglie i tag tenendo il testo ottiene un indirizzo non valido. Il frammento è `(togli)` e non il classico `NOSPAM`, che i raccoglitori sanno eliminare. I browser testuali come lynx e w3m ignorano gli elementi nascosti e lo mostrano (`nome(togli)@(togli)dominio.it`), ma resta chiaro cosa togliere. Due limiti: un raccoglitore che esegue davvero la pagina come un browser vede l'indirizzo come chiunque altro; e i link `mailto:` scritti negli articoli conservano l'indirizzo nel collegamento, perché altrimenti non funzionerebbero. Editor, archivio e stampa mostrano gli indirizzi normalmente.
+
 Se modifichi un'uscita dopo averla pubblicata, l'archivio la segna "da aggiornare" finché non la ripubblichi. Ritirarla la toglie dal pacchetto successivo; le copie già caricate online vanno aggiornate a mano.
 
 Queste protezioni riguardano chi legge. Chi ospita i file vede comunque gli indirizzi dei visitatori.
@@ -159,7 +162,7 @@ bash tests/run.sh
 Esegue tutti i test su una **copia temporanea** dell'app, con un database vuoto e un server PHP di prova: il sito, il suo database e le immagini caricate non vengono mai toccati, e la copia viene eliminata alla fine. Esce con codice 0 se è tutto superato.
 
 - `tests/api_test.php` verifica il backend via HTTP: uscite e statistiche, cronologia e conflitti, ricerca, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione e pacchetto del sito, backup e ripristino, compresi backup ostili e zip-slip.
-- `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, adattamento all'A4, ordine del libretto, neutralizzazione dell'HTML iniettato. Se Node manca viene saltato.
+- `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, adattamento all'A4, protezione degli indirizzi email, ordine del libretto, neutralizzazione dell'HTML iniettato. Se Node manca viene saltato.
 
 Il server di prova gira apposta in un fuso orario lontano da UTC, così un errore legato all'ora locale non passa inosservato. Servono le estensioni PHP dell'app più `exif`, usata per controllare i metadati.
 

@@ -398,6 +398,34 @@
     return body.getBoundingClientRect().height;
   }
 
+  // ---------- indirizzi email ----------
+
+  // Gli indirizzi email nelle pagine diffuse (export e pubblicazione) vengono
+  // spezzati con frammenti nascosti, e @ e . scritti come entità. Chi legge
+  // vede e copia l'indirizzo giusto: il testo nascosto non finisce negli
+  // appunti né nella lettura vocale. Nel sorgente invece l'indirizzo intero non
+  // esiste, quindi i programmi che raccolgono email per lo spam non lo trovano;
+  // chi toglie i tag e tiene il testo ottiene un indirizzo non valido. Il
+  // frammento è "(togli)" e non il classico NOSPAM, che i raccoglitori sanno
+  // eliminare; e se un browser senza stile lo mostrasse, si capisce cosa farne.
+  const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g;
+  const ESCA = '<span class="ez-esca" hidden>(togli)</span>';
+
+  function obfuscateEmail(addr) {
+    const at = addr.indexOf('@');
+    const local = addr.slice(0, at), domain = addr.slice(at + 1);
+    const cut = Math.max(1, Math.floor(local.length / 2));
+    const dot = domain.lastIndexOf('.');
+    const ent = s => esc(s).replace(/\./g, '&#46;');
+    return `<span class="ez-email">${ent(local.slice(0, cut))}${ESCA}${ent(local.slice(cut))}&#64;${ESCA}`
+         + `${ent(domain.slice(0, dot))}&#46;${ent(domain.slice(dot + 1))}</span>`;
+  }
+
+  // Solo nel testo, mai dentro i tag: un link mailto: deve restare valido.
+  function obfuscateEmails(html) {
+    return html.split(/(<[^>]*>)/).map(p => (p.charAt(0) === '<' ? p : p.replace(EMAIL, obfuscateEmail))).join('');
+  }
+
   // ---------- documenti autonomi (esportazione e stampa) ----------
 
   let cssCache = null;
@@ -475,7 +503,7 @@
 
   async function exportDocument(content, mh, opts = {}) {
     const m = masthead(mh);
-    const body = await inlineAssets(render(content, m, { bw: opts.bw }), m);
+    const body = await inlineAssets(obfuscateEmails(render(content, m, { bw: opts.bw })), m);
     const styles = (await css()) + '\n' + PAGE_RULE.normal + '\n@media print { body { padding: 0 !important; background: #fff !important; } }';
     return shell(opts.title || m.fullName, styles, body);
   }
@@ -521,7 +549,7 @@
   global.Ezine = {
     SCHEMA, FIT_MIN, DEFAULT_MASTHEAD, masthead, normalize, clone, esc,
     inlineMd, paragraphs, renderArticle, render, renderBooklet, bookletOrder,
-    measureOverflow, a4LimitPx, fitScale, measurePageAt,
+    measureOverflow, a4LimitPx, fitScale, measurePageAt, obfuscateEmails,
     exportDocument, printDocument, inlineAssets, favicon
   };
 })(window);

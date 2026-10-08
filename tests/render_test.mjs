@@ -11,7 +11,8 @@ import { dirname, join } from 'node:path';
 import vm from 'node:vm';
 
 const radice = join(dirname(fileURLToPath(import.meta.url)), '..');
-const contesto = { window: {} };
+// fetch finto: exportDocument legge il foglio di stile, qui basta un segnaposto
+const contesto = { window: {}, fetch: async () => ({ ok: true, text: async () => '/* css */' }) };
 vm.createContext(contesto);
 vm.runInContext(readFileSync(join(radice, 'assets/render.js'), 'utf8'), contesto);
 const E = contesto.window.Ezine;
@@ -122,6 +123,33 @@ verifica('trova la scala più grande che sta nel foglio (altezza lineare)', kL >
 verifica('...anche quando il testo si riimpagina (altezza non lineare)', kR >= 0.89 && kR <= 0.895 && conRiflusso(kR) <= limite, String(kR));
 verifica('una pagina che sta già nel foglio resta al 100%', E.fitScale(k => 800 * k, limite) === 1);
 verifica('se nemmeno al minimo basta, si ferma al minimo leggibile', E.fitScale(k => 5000 * k, limite) === E.FIT_MIN);
+
+// ===================================================================
+sezione('Indirizzi email nelle pagine diffuse');
+const ENT = { '&#64;': '@', '&#46;': '.', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"' };
+const decodifica = t => t.replace(/&#64;|&#46;|&amp;|&lt;|&gt;|&quot;/g, x => ENT[x]);
+const RE_EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g;
+// ciò che vede (e copia) chi legge: il browser non mostra gli elementi hidden
+const visto = h => decodifica(h.replace(/<span class="ez-esca" hidden>[^<]*<\/span>/g, '').replace(/<[^>]*>/g, ''));
+// raccoglitore che cerca indirizzi nel sorgente così com'è
+const grezzo = h => h.match(RE_EMAIL) || [];
+// raccoglitore più furbo: toglie i tag, decodifica le entità, poi cerca
+const furbo = h => decodifica(h.replace(/<[^>]*>/g, '')).match(RE_EMAIL) || [];
+const indirizzo = 'redazione.segreta@posta.esempio.org';
+const off = E.obfuscateEmails(`<p>Scrivici: ${indirizzo}, grazie.</p>`);
+verifica('chi legge vede l\'indirizzo esatto', visto(off) === `Scrivici: ${indirizzo}, grazie.`, visto(off));
+verifica('nel sorgente l\'indirizzo intero non compare', !off.includes(indirizzo) && !off.includes('@'));
+verifica('un raccoglitore che legge il sorgente non trova indirizzi', grezzo(off).length === 0, grezzo(off).join(', '));
+verifica('nemmeno togliendo i tag e decodificando trova l\'indirizzo vero', !furbo(off).includes(indirizzo), furbo(off).join(', '));
+verifica('i frammenti nascosti usano l\'attributo hidden', (off.match(/class="ez-esca" hidden/g) || []).length === 2);
+const link = E.obfuscateEmails('<a href="mailto:a@b.it">scrivi</a>');
+verifica('un link mailto: resta valido (gli attributi non si toccano)', link === '<a href="mailto:a@b.it">scrivi</a>');
+verifica('il testo senza indirizzi resta identico', E.obfuscateEmails('<p>Nessun indirizzo, solo @menzioni e 3.14</p>') === '<p>Nessun indirizzo, solo @menzioni e 3.14</p>');
+const due = E.obfuscateEmails('a@b.it e c.d@e.f.org');
+verifica('più indirizzi nello stesso testo', visto(due) === 'a@b.it e c.d@e.f.org' && grezzo(due).length === 0, visto(due));
+const esportato = await E.exportDocument({ header: { anno: 'I', numero: '1' } }, { contact: indirizzo });
+verifica('l\'export protegge il contatto della testata', !esportato.includes(indirizzo) && visto(esportato).includes(indirizzo));
+verifica('l\'anteprima dell\'editor e la stampa non vengono toccate', E.render({}, { contact: indirizzo }).includes(indirizzo));
 
 // ===================================================================
 sezione('Libretto');
