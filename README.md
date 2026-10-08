@@ -19,6 +19,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - [Archivio, versioni e backup](#archivio-versioni-e-backup)
 - [Pubblicazione per i lettori](#pubblicazione-per-i-lettori)
 - [Sicurezza](#sicurezza)
+- [Test](#test)
 - [Architettura](#architettura)
 - [Licenza](#licenza)
 
@@ -140,6 +141,27 @@ Già inclusi e attivi anche senza `.htaccess.example`:
 - `api/.htaccess` blocca l'accesso diretto a `api/lib.php`;
 - `uploads/.htaccess` lascia servire solo immagini con il nome generato dal server e impedisce di eseguire qualunque file in quella cartella.
 
+## Test
+
+```bash
+bash tests/run.sh
+```
+
+Esegue tutti i test su una **copia temporanea** dell'app, con un database vuoto e un server PHP di prova: il sito, il suo database e le immagini caricate non vengono mai toccati, e la copia viene eliminata alla fine. Esce con codice 0 se è tutto superato.
+
+- `tests/api_test.php` verifica il backend via HTTP: uscite e statistiche, cronologia e conflitti, ricerca, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione e pacchetto del sito, backup e ripristino, compresi backup ostili e zip-slip.
+- `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, ordine del libretto, neutralizzazione dell'HTML iniettato. Se Node manca viene saltato.
+
+Il server di prova gira apposta in un fuso orario lontano da UTC, così un errore legato all'ora locale non passa inosservato. Servono le estensioni PHP dell'app più `exif`, usata per controllare i metadati.
+
+Le regole dei `.htaccess` il server di prova non le applica. Per verificarle su un'installazione vera, in sola lettura:
+
+```bash
+EZINE_AUTH='utente:password' bash tests/check_apache.sh https://tuo-sito/ezine
+```
+
+Controlla autenticazione, file che non devono mai essere serviti (database, `.htpasswd`, `api/lib.php`, i test) e header di sicurezza. Le credenziali passano da una variabile e non vengono stampate né mostrate nell'elenco dei processi. La cartella `tests/` è protetta dal suo `.htaccess` e non è raggiungibile via web.
+
 ## Architettura
 
 | Percorso | Ruolo |
@@ -152,6 +174,7 @@ Già inclusi e attivi anche senza `.htaccess.example`:
 | `api/lib.php` | Funzioni condivise: database, migrazioni automatiche, testo, statistiche, immagini |
 | `api/*.php` | Endpoint JSON: uscite, ricerca, parole chiave, revisioni, bozza, impostazioni, immagini, backup, pubblicazione |
 | `uploads/` | Immagini caricate |
+| `tests/` | Test automatici (non raggiungibili via web) |
 
 Tutto il contenuto di un numero è serializzato come JSON in un'unica colonna `content`, con le immagini come percorsi in `uploads/`. Lo schema del database è versionato (`PRAGMA user_version`) e migrato automaticamente.
 

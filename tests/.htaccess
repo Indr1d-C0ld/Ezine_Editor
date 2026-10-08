@@ -1,0 +1,3 @@
+# I test si eseguono da riga di comando (bash tests/run.sh): via web non
+# devono essere raggiungibili, né tantomeno eseguibili.
+Require all denied
