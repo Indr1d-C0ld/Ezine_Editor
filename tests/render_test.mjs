@@ -100,6 +100,30 @@ verifica('le immagini esterne mantengono i filtri storici', art({ image: 'https:
 verifica('le virgolette nel percorso dell\'immagine vengono neutralizzate', !E.renderArticle({ text: 'x', image: 'a.jpg" onerror="alert(1)' }).includes('" onerror="'));
 
 // ===================================================================
+sezione('Adattamento all\'A4');
+verifica('attivo di base', E.normalize({}).autoFit === true);
+verifica('disattivabile per uscita', E.normalize({ autoFit: false }).autoFit === false);
+const nf = E.normalize({ fit: [0.5, 1.4, 'x', 0.82] });
+verifica('le scale vengono riportate fra il minimo e 1', JSON.stringify(nf.fit) === JSON.stringify([E.FIT_MIN, 1, 1, 0.82]), JSON.stringify(nf.fit));
+const ridotta = E.render({ header: {}, fit: [0.8] }, null);
+verifica('la pagina adattata viene ridotta e allargata in proporzione', ridotta.includes('zoom:0.8;width:calc(190mm / 0.8)'));
+verifica('con l\'adattamento spento nessuna riduzione', !E.render({ header: {}, fit: [0.8], autoFit: false }, null).includes('zoom:'));
+verifica('una pagina che sta già nel foglio non viene toccata', !E.render({ header: {}, fit: [1] }, null).includes('zoom:'));
+verifica('ogni pagina ha la sua scala', (() => {
+  const h = E.render({ header: {}, pages: [{ articles: [] }], fit: [0.9, 0.78] }, null);
+  return h.includes('zoom:0.9;') && h.includes('zoom:0.78;');
+})());
+verifica('la riduzione vale anche nel libretto', E.renderBooklet({ header: {}, fit: [0.85] }, null).html.includes('zoom:0.85;'));
+const limite = 1000;
+const lineare = k => 1250 * k;                 // altezza proporzionale alla scala
+const conRiflusso = k => 1250 * k * k;         // riducendo, il testo si riimpagina su righe più lunghe
+const kL = E.fitScale(lineare, limite), kR = E.fitScale(conRiflusso, limite);
+verifica('trova la scala più grande che sta nel foglio (altezza lineare)', kL >= 0.79 && kL <= 0.8 && lineare(kL) <= limite, String(kL));
+verifica('...anche quando il testo si riimpagina (altezza non lineare)', kR >= 0.89 && kR <= 0.895 && conRiflusso(kR) <= limite, String(kR));
+verifica('una pagina che sta già nel foglio resta al 100%', E.fitScale(k => 800 * k, limite) === 1);
+verifica('se nemmeno al minimo basta, si ferma al minimo leggibile', E.fitScale(k => 5000 * k, limite) === E.FIT_MIN);
+
+// ===================================================================
 sezione('Libretto');
 const ordine = k => JSON.stringify(E.bookletOrder(k).sides);
 verifica('8 pagine: [8|1] [2|7] [6|3] [4|5]', ordine(8) === '[[8,1],[2,7],[6,3],[4,5]]', ordine(8));

@@ -26,7 +26,8 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 ## Caratteristiche
 
 **Composizione**
-- Anteprima a dimensione A4 reale: il testo va a capo esattamente come sulla carta, e l'editor segnala le pagine che eccedono il foglio, con la percentuale
+- Anteprima a dimensione A4 reale: il testo va a capo esattamente come sulla carta
+- **Pagine che stanno da sole nell'A4**: ogni pagina che sfora viene ridotta quanto basta (fino al 75%), e se non basta un pulsante sposta gli articoli in eccesso nella pagina successiva
 - Prima pagina classica (articolo a tutta larghezza, due colonne, riquadro, tre colonne di brevi, consiglio, piè di pagina) più **pagine interne** a 1–3 colonne, con il testo che scorre da una colonna all'altra
 - L'anteprima mostra ciò che stai scrivendo mentre lo scrivi, tratteggiato finché non lo aggiungi
 - Articoli spostabili trascinandoli, anche fra colonne e pagine diverse
@@ -97,9 +98,13 @@ Le retinature lavorano sui pixel, non con filtri CSS: per questo l'effetto sopra
 
 ## Stampa e fotocopia
 
-**Stampa A4** produce un foglio per pagina. Se una pagina eccede l'A4, il pannello di stampa lo segnala: in stampa continua su un altro foglio.
+**Adattamento all'A4.** Di base ogni pagina che non entra nel foglio viene ridotta in proporzione, quanto basta e non oltre il 75%, sotto il quale il testo stampato scende sotto i 7 punti. Il testo si riimpagina su righe più lunghe invece di rimpicciolire soltanto, quindi spesso basta una riduzione minore di quanto ci si aspetterebbe. La scala viene calcolata nell'editor e salvata con l'uscita: stampa, libretto, export e pagine pubblicate la applicano identica, senza bisogno di script. L'adattamento punta al 99% del foglio, così font leggermente diversi su un altro computer non fanno traboccare qualche riga su un secondo foglio. Si disattiva per singola uscita dal pannello di stampa.
 
-**Stampa a libretto A5** riduce ogni pagina in A5 e le dispone due per facciata nell'ordine per la rilegatura a punto metallico (con 8 pagine: [8|1] [2|7] [6|3] [4|5]), aggiungendo pagine bianche fino a un multiplo di quattro. Stampa fronte/retro con rilegatura sul **lato corto**, piega i fogli a metà tutti insieme e pinza al centro. Qui il contenuto che eccede la pagina viene tagliato: controlla prima le segnalazioni.
+Se una pagina non entra nemmeno al 75%, il pannello lo segnala con un pulsante **"Sposta l'eccedenza"**: gli ultimi articoli passano, interi e nell'ordine originale, all'inizio della pagina successiva (creata se non c'è), finché la pagina sta nel foglio. Le parti fisse della prima pagina (testata, articolo a tutta larghezza, riquadro, colonne brevi) non si spostano: se l'eccedenza è lì, il pannello invita ad accorciare quei testi.
+
+**Stampa A4** produce un foglio per pagina.
+
+**Stampa a libretto A5** riduce ogni pagina in A5 e le dispone due per facciata nell'ordine per la rilegatura a punto metallico (con 8 pagine: [8|1] [2|7] [6|3] [4|5]), aggiungendo pagine bianche fino a un multiplo di quattro. Stampa fronte/retro con rilegatura sul **lato corto**, piega i fogli a metà tutti insieme e pinza al centro. Qui il contenuto che eccede la pagina verrebbe tagliato: con l'adattamento attivo e le segnalazioni risolte non succede.
 
 **Bianco e nero ad alto contrasto** porta tutto a nero su bianco ed elimina i fondini, che in fotocopia diventano grigi sporchi.
 
@@ -150,7 +155,7 @@ bash tests/run.sh
 Esegue tutti i test su una **copia temporanea** dell'app, con un database vuoto e un server PHP di prova: il sito, il suo database e le immagini caricate non vengono mai toccati, e la copia viene eliminata alla fine. Esce con codice 0 se è tutto superato.
 
 - `tests/api_test.php` verifica il backend via HTTP: uscite e statistiche, cronologia e conflitti, ricerca, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione e pacchetto del sito, backup e ripristino, compresi backup ostili e zip-slip.
-- `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, ordine del libretto, neutralizzazione dell'HTML iniettato. Se Node manca viene saltato.
+- `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, adattamento all'A4, ordine del libretto, neutralizzazione dell'HTML iniettato. Se Node manca viene saltato.
 
 Il server di prova gira apposta in un fuso orario lontano da UTC, così un errore legato all'ora locale non passa inosservato. Servono le estensioni PHP dell'app più `exif`, usata per controllare i metadati.
 

@@ -61,6 +61,8 @@
     .fit-list { font-size: 0.75rem; margin: 6px 0 0; padding-left: 1.1rem; }
     .fit-list .ok { color: #1c6544; }
     .fit-list .over { color: #a8261d; font-weight: bold; }
+    .fit-list .fit { color: #2c6a8c; }
+    .fit-list button { display: block; margin: 4px 0 6px; padding: 3px 8px; font-size: 0.75rem; font-weight: normal; }
     [hidden] { display: none !important; }
 
     /* comandi di modifica dentro l'anteprima (mai nell'export né in stampa) */
@@ -205,6 +207,7 @@
 
     <details class="panel">
       <summary>🖨️ Stampa ed esportazione</summary>
+      <label class="check"><input type="checkbox" id="autoFit"> Adatta ogni pagina all'A4 (riduce fino al 75%)</label>
       <label class="check"><input type="checkbox" id="bwMode"> Bianco e nero ad alto contrasto (fotocopia)</label>
       <button id="printBtn">🖨️ Stampa A4</button>
       <button id="bookletBtn">📖 Stampa a libretto A5</button>
@@ -557,9 +560,19 @@
 
   function renderPreview() {
     const { d, ghost } = previewContent();
-    $('newspaperPreview').innerHTML = Ezine.render(d, mh, { editable: true, ghost, bw: $('bwMode').checked });
+    const misure = measurePages(d);
+    const fit = misure.map(m => m.k);
+    // La scala calcolata fa parte dell'uscita: export, stampa e pagine pubblicate
+    // la applicano senza poter misurare nulla. Si salva solo per il contenuto
+    // vero, non per l'anteprima di ciò che si sta scrivendo.
+    if (d === content && content.autoFit && JSON.stringify(fit) !== JSON.stringify(content.fit)) {
+      content.fit = fit;
+      saveLocal();
+      saveDraftSoon();
+    }
+    $('newspaperPreview').innerHTML = Ezine.render(Object.assign({}, d, { fit }), mh, { editable: true, ghost, bw: $('bwMode').checked });
     fitPreview();
-    checkPages(d);
+    showFitReport(misure);
   }
   const renderPreviewSoon = debounce(renderPreview, 120);
 
@@ -573,35 +586,102 @@
     box.style.height = (el.offsetHeight * k) + 'px';
   }
 
-  // La misura si fa su una copia senza pulsanti di modifica, nascosta: è quella
-  // che finisce davvero sulla carta. I segnali vanno poi sulle pagine visibili.
-  function checkPages(d) {
-    const shown = [...$('newspaperPreview').querySelectorAll('.page')];
+  // Misura ogni pagina su una copia senza pulsanti di modifica, nascosta (è ciò
+  // che finisce sulla carta), e calcola la scala a cui sta nell'A4.
+  //   natural  quanto occupa a grandezza piena (1 = esattamente un A4)
+  //   k        scala applicata (1 se sta già, o se l'adattamento è spento)
+  //   residual quanto occupa alla scala k (> 1: sfora ancora)
+  function measurePages(d) {
     let box = $('measureBox');
     if (!box) { box = document.createElement('div'); box.id = 'measureBox'; document.body.appendChild(box); }
-    box.innerHTML = Ezine.render(d, mh, { bw: $('bwMode').checked });
-    const fit = Ezine.measureOverflow(box.querySelector('.newspaper'));
+    box.innerHTML = Ezine.render(Object.assign({}, d, { autoFit: false }), mh, { bw: $('bwMode').checked });
+    const limit = Ezine.a4LimitPx();
+    // L'adattamento punta al 99% del foglio (~3 mm di margine): un altro browser,
+    // o font di sistema leggermente diversi, non devono far traboccare qualche
+    // riga su un secondo foglio quasi vuoto.
+    const target = limit * 0.99;
+    const out = [...box.querySelectorAll('.page-body')].map((body, i) => {
+      const natural = Ezine.measurePageAt(body, 1) / limit;
+      const k = d.autoFit ? Ezine.fitScale(x => Ezine.measurePageAt(body, x), target) : 1;
+      return { page: i + 1, natural, k, residual: Ezine.measurePageAt(body, k) / limit };
+    });
     box.innerHTML = '';
+    return out;
+  }
+
+  const pct = x => Math.round(x * 100);
+
+  function movableCount(n) {
+    return n === 0 ? content.colLeft.length + content.colRight.length : (content.pages[n - 1] || { articles: [] }).articles.length;
+  }
+
+  function showFitReport(misure) {
+    const shown = [...$('newspaperPreview').querySelectorAll('.page')];
     const list = $('fitList');
     list.innerHTML = '';
-    for (const p of fit) {
-      const over = p.ratio > 1.005;
-      p.el = shown[p.page - 1];
-      if (!p.el) continue;
-      p.el.classList.toggle('ez-overflow', over);
+    for (const m of misure) {
+      const over = m.residual > 1.005;
+      if (shown[m.page - 1]) shown[m.page - 1].classList.toggle('ez-overflow', over);
       const li = document.createElement('li');
-      li.className = over ? 'over' : 'ok';
-      li.textContent = over
-        ? `Pagina ${p.page}: supera l'A4 del ${Math.round((p.ratio - 1) * 100)}% – in stampa continua su un altro foglio, nel libretto viene tagliata`
-        : `Pagina ${p.page}: sta nell'A4 (${Math.round(p.ratio * 100)}% dello spazio)`;
+      if (over) {
+        li.className = 'over';
+        li.textContent = m.k < 1
+          ? `Pagina ${m.page}: anche ridotta al ${pct(m.k)}% supera l'A4 del ${pct(m.residual - 1)}%`
+          : `Pagina ${m.page}: supera l'A4 del ${pct(m.residual - 1)}%`;
+        if (movableCount(m.page - 1) > 0) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'secondary';
+          b.textContent = `Sposta l'eccedenza a pagina ${m.page + 1}`;
+          b.addEventListener('click', () => relieve(m.page - 1));
+          li.appendChild(b);
+        } else {
+          li.textContent += ' – accorcia i testi: non ci sono articoli da spostare';
+        }
+      } else if (m.k < 1) {
+        li.className = 'fit';
+        li.textContent = `Pagina ${m.page}: adattata all'A4, ridotta al ${pct(m.k)}%`;
+      } else {
+        li.className = 'ok';
+        li.textContent = `Pagina ${m.page}: sta nell'A4 (${pct(m.natural)}% dello spazio)`;
+      }
       list.appendChild(li);
     }
-    const n = fit.length, padded = Ezine.bookletOrder(n).n;
+    const n = misure.length, padded = Ezine.bookletOrder(n).n;
     const sheets = padded / 4, blank = padded - n;
     const pagine = n === 1 ? '1 pagina' : `${n} pagine`;
     const bianche = blank === 0 ? '' : blank === 1 ? ' + 1 bianca' : ` + ${blank} bianche`;
     const fogli = sheets === 1 ? '1 foglio' : `${sheets} fogli`;
     $('bookletInfo').textContent = `Libretto: ${pagine}${bianche} su ${fogli} A4 fronte/retro.`;
+  }
+
+  // Sposta gli ultimi articoli della pagina n nella successiva (creandola se
+  // serve) finché la pagina sta nell'A4. Gli articoli restano interi e
+  // nell'ordine originale; le sezioni fisse della prima pagina non si spostano.
+  function relieve(n) {
+    if (editing) endEdit();
+    let spostati = 0;
+    for (let guard = 0; guard < 80; guard++) {
+      const m = measurePages(content)[n];
+      if (!m || m.residual <= 1.005) break;
+      let art = null;
+      if (n === 0) {
+        const col = content.colRight.length >= content.colLeft.length ? 'colRight' : 'colLeft';
+        art = content[col].pop() || null;
+      } else {
+        art = content.pages[n - 1].articles.pop() || null;
+      }
+      if (!art) break;
+      if (!content.pages[n]) content.pages.splice(n, 0, { title: '', columns: 2, articles: [] });
+      content.pages[n].articles.unshift(art);
+      spostati++;
+    }
+    const resta = measurePages(content)[n];
+    commit();
+    if (resta && resta.residual > 1.005) {
+      alert(`Spostat${spostati === 1 ? 'o 1 articolo' : `i ${spostati} articoli`}, ma la pagina ${n + 1} supera ancora l'A4: ` +
+            'l\'eccedenza sta nelle parti che non si spostano (testata, articolo a tutta larghezza, riquadro, colonne brevi). Accorcia lì i testi.');
+    }
   }
 
   // ---------- azioni dentro l'anteprima ----------
@@ -801,6 +881,7 @@
     $('numero').value = content.header.numero;
     $('data').value = content.header.data;
     $('titleColor').value = content.header.titleColor || '#8b1f1f';
+    $('autoFit').checked = content.autoFit !== false;
   }
 
   function withMasthead(d) {
@@ -989,6 +1070,7 @@
     $('issueTitle').addEventListener('input', () => { saveLocal(); saveDraftSoon(); });
 
     $('bwMode').addEventListener('change', renderPreview);
+    $('autoFit').addEventListener('change', () => { content.autoFit = $('autoFit').checked; commit({ keepTargets: true }); });
     $('printBtn').addEventListener('click', () => openPrint('normal'));
     $('bookletBtn').addEventListener('click', () => openPrint('booklet'));
     $('exportBtn').addEventListener('click', exportHtml);

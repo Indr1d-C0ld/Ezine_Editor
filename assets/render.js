@@ -13,6 +13,10 @@
 
   const SCHEMA = 2;
 
+  // Riduzione minima applicata dall'adattamento all'A4: sotto il 75% il corpo
+  // del testo scende sotto i 7 punti stampati e smette di essere leggibile.
+  const FIT_MIN = 0.75;
+
   // Valori neutri: la testata reale vive nelle impostazioni salvate sul server.
   const DEFAULT_MASTHEAD = {
     nameA: 'LA MIA',
@@ -52,6 +56,11 @@
     for (const k of ['colLeft', 'colRight', 'roundup', 'letters', 'fight']) {
       if (!Array.isArray(d[k])) d[k] = [];
     }
+    // Adattamento all'A4: attivo se non disattivato esplicitamente. In fit c'è la
+    // scala calcolata dall'editor per ciascuna pagina (0 = prima pagina).
+    d.autoFit = d.autoFit !== false;
+    d.fit = (Array.isArray(d.fit) ? d.fit : []).map(k =>
+      (typeof k === 'number' && isFinite(k) ? Math.min(1, Math.max(FIT_MIN, k)) : 1));
     d.pages = (Array.isArray(d.pages) ? d.pages : []).map(p => ({
       title: (p && p.title) || '',
       columns: [1, 2, 3].includes(Number(p && p.columns)) ? Number(p.columns) : 2,
@@ -289,13 +298,21 @@
 
     const pages = [];
     const lastInner = d.pages.length - 1;
+    // La pagina adattata viene ridotta con zoom (che, a differenza di transform,
+    // conta anche nell'impaginazione e in stampa) e allargata in proporzione:
+    // il testo si riimpagina su righe più lunghe invece di rimpicciolire soltanto.
+    const body = (i, html) => {
+      const k = d.autoFit ? (d.fit[i] || 1) : 1;
+      const style = k < 0.999 ? ` style="zoom:${k};width:calc(190mm / ${k})"` : '';
+      return `<div class="page-body"${style}>${html}</div>`;
+    };
     let front = renderFront(d, m, o);
     if (lastInner < 0) front += renderFooter(d, m, o);
-    pages.push(`<section class="page page-front"><div class="page-body">${front}</div></section>`);
+    pages.push(`<section class="page page-front">${body(0, front)}</section>`);
     d.pages.forEach((p, i) => {
       let inner = renderInner(d, m, p, i, o);
       if (i === lastInner) inner += renderFooter(d, m, o);
-      pages.push(`<section class="page page-inner" data-page="${i}"><div class="page-body">${inner}</div></section>`);
+      pages.push(`<section class="page page-inner" data-page="${i}">${body(i + 1, inner)}</section>`);
     });
 
     if (o.pagesOnly) return pages;
@@ -333,18 +350,52 @@
 
   // ---------- adattamento all'A4 ----------
 
-  // Quanto ogni pagina eccede l'area stampabile di un A4 (190 × 277 mm).
-  function measureOverflow(root) {
+  // Altezza dell'area stampabile di un A4 (277 mm), in pixel dello schermo.
+  function a4LimitPx() {
     const probe = document.createElement('div');
     probe.style.cssText = 'position:absolute;visibility:hidden;height:277mm;width:1px';
     document.body.appendChild(probe);
-    const limit = probe.offsetHeight;
+    const limit = probe.getBoundingClientRect().height;
     probe.remove();
+    return limit;
+  }
+
+  // Quanto ogni pagina eccede l'area stampabile di un A4 (190 × 277 mm).
+  // getBoundingClientRect e non offsetHeight: tiene conto dello zoom delle
+  // pagine adattate.
+  function measureOverflow(root) {
+    const limit = a4LimitPx();
     return Array.from(root.querySelectorAll('.page')).map((page, i) => {
       const body = page.querySelector('.page-body');
-      const h = body ? body.offsetHeight : 0;
+      const h = body ? body.getBoundingClientRect().height : 0;
       return { page: i + 1, el: page, limitPx: limit, heightPx: h, ratio: h / limit };
     });
+  }
+
+  /**
+   * Scala più grande (fra FIT_MIN e 1) a cui una pagina sta nell'A4.
+   * measureAt(k) restituisce l'altezza della pagina ridotta a k. La ricerca è
+   * binaria perché l'altezza non è proporzionale a k: riducendo, il testo si
+   * riimpagina su righe più lunghe. Se nemmeno al minimo la pagina sta nel
+   * foglio, restituisce FIT_MIN: la riduzione resta leggibile, e l'eccedenza
+   * va spostata in un'altra pagina.
+   */
+  function fitScale(measureAt, limit, min = FIT_MIN) {
+    if (measureAt(1) <= limit) return 1;
+    if (measureAt(min) > limit) return min;
+    let lo = min, hi = 1;
+    for (let i = 0; i < 12; i++) {
+      const mid = (lo + hi) / 2;
+      if (measureAt(mid) <= limit) lo = mid; else hi = mid;
+    }
+    return Math.floor(lo * 1000) / 1000;
+  }
+
+  // Applica una scala di prova a una pagina già nel DOM e ne misura l'altezza.
+  function measurePageAt(body, k) {
+    body.style.zoom = k < 0.999 ? String(k) : '';
+    body.style.width = k < 0.999 ? `calc(190mm / ${k})` : '';
+    return body.getBoundingClientRect().height;
   }
 
   // ---------- documenti autonomi (esportazione e stampa) ----------
@@ -468,8 +519,9 @@
   }
 
   global.Ezine = {
-    SCHEMA, DEFAULT_MASTHEAD, masthead, normalize, clone, esc,
+    SCHEMA, FIT_MIN, DEFAULT_MASTHEAD, masthead, normalize, clone, esc,
     inlineMd, paragraphs, renderArticle, render, renderBooklet, bookletOrder,
-    measureOverflow, exportDocument, printDocument, inlineAssets, favicon
+    measureOverflow, a4LimitPx, fitScale, measurePageAt,
+    exportDocument, printDocument, inlineAssets, favicon
   };
 })(window);
