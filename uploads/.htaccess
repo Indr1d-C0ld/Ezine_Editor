@@ -1,0 +1,17 @@
+# Qui finiscono le immagini caricate: devono poter essere servite solo loro.
+#
+# Tutto ciò che non ha il nome generato dal server (24 cifre esadecimali +
+# .png/.jpg) è negato. Per le immagini non si imposta nessuna regola, così
+# ereditano quella della cartella superiore: protette se lì è attiva
+# l'autenticazione, visibili se l'installazione non la usa.
+<FilesMatch "^(?![a-f0-9]{24}\.(png|jpg)$)">
+    Require all denied
+</FilesMatch>
+
+# Nessun file può essere eseguito come script, qualunque estensione abbia.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+RemoveHandler .php .phtml .phar .pl .py .cgi .sh
+RemoveType .php .phtml .phar
+Options -ExecCGI

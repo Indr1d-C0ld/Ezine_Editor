@@ -1,0 +1,5 @@
+# lib.php contiene solo funzioni condivise: viene incluso dagli altri endpoint
+# e non deve mai essere richiesto direttamente.
+<Files "lib.php">
+    Require all denied
+</Files>

@@ -1,14 +1,22 @@
 # === Dati reali (generati a runtime, mai da versionare) ===
+# ezine.db contiene uscite, cronologia, bozza e le impostazioni della testata
 ezine.db
 ezine.db-shm
 ezine.db-wal
+ezine.db-journal
+
+# === Immagini caricate: si versiona solo la protezione della cartella ===
+uploads/*
+!uploads/.htaccess
 
 # === Autenticazione locale (se attivi Basic Auth seguendo .htaccess.example) ===
-.htaccess
+# Solo quello alla radice: api/.htaccess e uploads/.htaccess fanno parte
+# dell'applicazione e vanno versionati.
+/.htaccess
 .htpasswd
 
-# === Asset personale opzionale (se ne aggiungi uno tuo con lo stesso nome) ===
-UO LOGO.png
+# === Backup scaricati dall'archivio ===
+ezine-backup-*.zip
 
 # === OS / editor ===
 .DS_Store

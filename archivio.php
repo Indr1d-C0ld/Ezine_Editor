@@ -1,420 +1,321 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archivio – La Mia Ezine</title>
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADoElEQVR4nO2bz0sbQRzFX2KsJpAaI1JUiKlRUER6qLQlYKBHDzlZ8CIIXjzkoAdz9R9oPetREMSDBRUKBfGgYNAW1PoDexASQ2maQmnqVsQkJj2tDXF3MzOZze4m+zkps3znvbff3Zlks4BJbWOp5GRvOzvzpMeGLy8rok3VSWgMl0KtQFQpytN4MbyD4FZMTdNy8AjDykOIFuZ5zVtWgloZl4K1G5g7QE/mAXY9TAHozbwIiy7qAPRqXoRWH1UAejcvQqOTOACjmBch1UsUgNHMi5DoLhmAUc2LlNKvGIDRzYso+eCyEzQysrsn0rM/PDeH/pERpsk/zszgdHVVcszt82Fia4uozjuvl+g4qd2iZAdUS+sXI+VLsgPKCSB0eAh7c7Pk2PnaGj5MTzPVfT4xgdezswCA9+PjiG5vM9Up7oKavwc8CKBa21+k2J/ZAYX/VPvZFyn0aXaA1gK0xgxA/KNWrn8R0a/ZAVoL0BozAK0FaI0ZAPeKeYXFxML+IMpi/S81rzQHJdwDyNzcyI7V2+3MdesdDqI5aOEewK0gyI4VmqClMLzbqyvmOsXwD0BBnLO9nbnu444Oojlo4R7Ar4sL2TGXxwOrzcZUt7mrCwCQvr7G32SSqYYU9wHw+uXFj6Mj+clsNnQMDlLXbGxqQmtvLwAgeXKCfC7HKu8e0S/3Dojv7SmuBL3BIHXNnuHh+875tr/PrE0K7gH8iccR3dmRHR8YHYXb5yOuV+9wwD81BQDIZbM4XlkpW2MhqmyEPs3Py3aB1WbDm6UltPT0lKzT6HJhZHERzrY2AMDXjQ0IiQRXrQ+ue14fi4fCYbwMhWTHc9ksztfXcbG5ieTxMW5SKeQyGTS6XGjp7oY3EMCzsTE0OJ0AgFQshqVgUHGZJaXwfqdaAJa6OgyFw3gxOVnWDhAAfp6dYSMUQioW4yFNOQCA75cjHr8fr0IhePx+6iCERAJflpfxeWEBd5kMFz3Fqx3bokxBPBJBPBKBy+vF00AATwYG0NrXB7vbjQanE48cDmTTaaQFAbeCgN/RKJKnp/h+cIDL3V3k7+5U1ad6ACKpWAyHnFqYJ5KrQKV+qFxpiJ8Oyx1sZOT8mF+IKA1WSxco+SjZAUYPoZR+okvAqCGQ6Ca+BxgtBFK9VDdBo4RAo5N6FdB7CLT6mJZBvYbAoot5H6C3EFj1cDGh5aP1ck8El52gVt3AY17zvUGexYqp2TdH5dDju8M1zz/rTU5pTXeKhgAAAABJRU5ErkJggg==">
-    <style>
-        body { background: #2c2c2c; font-family: 'Courier New', monospace; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: #fef9ef; padding: 20px; border: 1px solid #222; }
-        h1 { color: #8b1f1f; border-left: 5px solid #8b1f1f; padding-left: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #aaa; padding: 8px; text-align: left; vertical-align: top; }
-        th { background: #e9e2cf; }
-        .actions button { margin: 2px; padding: 4px 8px; background: #8b1f1f; color: white; border: none; cursor: pointer; }
-        .search { margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap; }
-        .search input, .search select { padding: 6px; font-family: monospace; }
-        .keyword-cloud { margin: 20px 0; background: #f4efdf; padding: 10px; border: 1px solid #aaa; }
-        .keyword { display: inline-block; margin: 5px; padding: 3px 8px; background: #ddd; border-radius: 12px; }
-        .footer { margin-top: 20px; text-align: center; }
-        a { color: #8b1f1f; text-decoration: none; }
-    </style>
-    <style id="newspaper-css">
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #e6e3db; font-family: 'Courier New', Courier, 'Lucida Sans Typewriter', 'Lucida Typewriter', monospace; line-height: 1.35; color: #111; padding: 1.5rem; }
-        .newspaper { max-width: 1100px; margin: 0 auto; background: #fef9ef; padding: 2rem 1.5rem; box-shadow: 0 0 15px rgba(0,0,0,0.2); border: 1px solid #222; }
-        .header { text-align: center; border-bottom: 4px double #111; margin-bottom: 1.2rem; padding-bottom: 0.8rem; }
-        .title-wrapper { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 0.2rem; }
-        .header-logo { height: 60px; width: auto; filter: grayscale(0.1); }
-        .title { font-size: 4.2rem; font-weight: 800; letter-spacing: -1px; font-family: 'Georgia', 'Clarendon', 'Times New Roman', serif; text-transform: uppercase; line-height: 1.1; text-shadow: 0.02em 0.02em 0px rgba(0,0,0,0.08), -0.02em -0.01em 0px rgba(0,0,0,0.05), 0.04em 0.03em 0px rgba(0,0,0,0.02); transform: rotate(0.2deg); }
-        .title .underground { color: #8b1f1f; display: inline-block; }
-        .title .observer { color: #000000; display: inline-block; }
-        .motto { font-style: italic; font-size: 0.7rem; letter-spacing: 0px; font-family: 'Courier New', Courier, monospace; margin-top: 0.2rem; color: #444; }
-        .subhead { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; border-top: 1px solid #333; border-bottom: 1px solid #333; display: inline-block; padding: 0.2rem 0; margin-top: 0.2rem; font-family: 'Courier New', Courier, monospace; }
-        .edition-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.7rem;
-            font-family: monospace;
-            margin-top: 0.5rem;
-            border-top: 1px solid #888;
-            padding-top: 0.5rem;
-        }
-        .edition-info span:first-child { flex: 1; text-align: left; }
-        .edition-info span:last-child { flex: 1; text-align: right; }
-        .edition-info span:not(:first-child):not(:last-child) { flex: 1; text-align: center; }
-        article { margin-bottom: 1rem; }
-        .full-width { margin-bottom: 1.5rem; border-bottom: 1px dashed #aaa; padding-bottom: 0.8rem; }
-        .fullwidth-columns {
-            column-gap: 1.8rem;
-            column-rule: 1px solid #ccc;
-            font-size: 0.82rem;
-        }
-        .fullwidth-columns p { break-inside: avoid; margin-bottom: 0.6rem; }
-        h2 { font-size: 1.5rem; font-weight: 800; text-transform: uppercase; border-left: 5px solid #c00; padding-left: 0.5rem; margin: 0.7rem 0 0.4rem 0; }
-        .kicker { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #a00; }
-        .byline { font-size: 0.7rem; font-weight: bold; border-bottom: 1px dotted #aaa; margin-bottom: 0.4rem; display: inline-block; }
-        p { font-size: 0.82rem; text-align: justify; margin-bottom: 0.6rem; }
-        .feature-box { border: 2px solid #111; padding: 0.8rem; background: #f4efdf; margin: 1rem 0; font-family: 'Courier New', Courier, monospace; }
-        .feature-box h3 { font-size: 1rem; font-weight: 800; text-transform: uppercase; background: #111; color: #fef9ef; display: inline-block; padding: 0.1rem 0.4rem; letter-spacing: 1px; margin-bottom: 0.5rem; }
-        hr { margin: 1rem 0; border: none; border-top: 1px solid #222; }
-        .fake-ad { font-size: 0.7rem; text-align: center; border: 1px dashed #444; padding: 0.4rem; margin: 0.6rem 0; background: #e9e2cf; }
-        .fake-ad-colored { background: #d4b8b8 !important; border: 1px solid #8b1f1f !important; color: #2c0a0a; }
-        footer { margin-top: 2rem; border-top: 2px solid #111; padding-top: 0.8rem; font-size: 0.65rem; text-align: center; font-family: monospace; }
-        @media screen { .columns-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.2rem 0; } .columns-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; } }
-        @media print { body { background: white; padding: 0; margin: 0; } .newspaper { max-width: 100%; padding: 0.8rem; box-shadow: none; background: white; } .columns-2, .columns-3 { display: block; column-count: 2; column-gap: 1.8rem; column-rule: 1px solid #aaa; } .columns-3 { column-count: 3; } article, .fake-ad { break-inside: avoid; page-break-inside: avoid; } .feature-box, .header, footer, hr { break-inside: avoid; } .title { transform: none; } }
-        .article-img { max-width: 100%; margin: 0.5rem 0; border: 1px solid #aaa; display: block; }
-        .float-left { float: left; margin: 0.5rem 1rem 0.5rem 0; max-width: 45%; }
-        .float-right { float: right; margin: 0.5rem 0 0.5rem 1rem; max-width: 45%; }
-        .clearfix::after { content: ""; clear: both; display: table; }
-        .img-woodcut { filter: grayscale(1) contrast(300%) brightness(90%) !important; image-rendering: crisp-edges; }
-        .img-bitmap { filter: grayscale(1) contrast(200%) brightness(80%) !important; image-rendering: pixelated; }
-        .caption { font-size: 0.65rem; font-style: italic; text-align: center; margin-top: -0.2rem; margin-bottom: 0.5rem; color: #444; }
-        .image-wrapper { margin: 0.5rem 0; display: inline-block; width: 100%; }
-        .float-left .image-wrapper, .float-right .image-wrapper { display: block; width: auto; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Archivio</title>
+  <link rel="stylesheet" href="assets/newspaper.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #2c2c2c; font-family: 'Courier New', monospace; margin: 0; padding: 20px; color: #111; }
+    .container { max-width: 1200px; margin: 0 auto; background: #fef9ef; padding: 20px; border: 1px solid #222; }
+    h1 { color: #8b1f1f; border-left: 5px solid #8b1f1f; padding-left: 15px; margin: 0 0 0.6rem; font-size: 1.6rem; }
+    h2 { font-size: 1.05rem; margin: 0 0 0.6rem; color: #8b1f1f; }
+    a { color: #8b1f1f; }
+    button, .btn {
+      font: 0.8rem 'Courier New', monospace; padding: 5px 9px; margin: 2px; background: #8b1f1f; color: #fff;
+      border: none; cursor: pointer; text-decoration: none; display: inline-block; border-radius: 2px;
+    }
+    button.secondary, .btn.secondary { background: #555; }
+    button:hover, .btn:hover { filter: brightness(1.15); }
+    button:focus-visible, .btn:focus-visible, input:focus-visible { outline: 2px solid #2c2c2c; outline-offset: 2px; }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    input { font-family: monospace; padding: 6px; border: 1px solid #aaa; }
+    .search { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    .search input { flex: 1; min-width: 180px; }
+    .keyword-cloud { margin: 16px 0; background: #f4efdf; padding: 10px; border: 1px solid #aaa; }
+    .keyword { display: inline-block; margin: 4px; padding: 3px 8px; background: #ddd; border-radius: 12px; font-size: 0.85rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #aaa; padding: 7px; text-align: left; vertical-align: top; }
+    th { background: #e9e2cf; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    td.actions { min-width: 260px; }
+    .empty { padding: 1.5rem; text-align: center; color: #666; }
+    .tools { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+    .tool { border: 1px solid #aaa; background: #f4efdf; padding: 12px; }
+    .tool p { font-size: 0.8rem; margin: 0 0 8px; }
+    .result { font-size: 0.8rem; margin-top: 8px; white-space: pre-line; }
+    .footer { margin-top: 20px; text-align: center; font-size: 0.8rem; }
+    dialog { border: 1px solid #222; padding: 0; max-width: 760px; width: calc(100% - 32px); background: #fef9ef; }
+    dialog::backdrop { background: rgba(0,0,0,0.5); }
+    .dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #e9e2cf; border-bottom: 1px solid #aaa; }
+    .dlg-body { padding: 14px; max-height: 70vh; overflow: auto; }
+    .rev { display: flex; justify-content: space-between; gap: 10px; align-items: center; border-bottom: 1px dashed #bbb; padding: 7px 0; font-size: 0.85rem; }
+    /* senza questa regola "display: inline-block" dei pulsanti vince su hidden */
+    [hidden] { display: none !important; }
+  </style>
 </head>
 <body>
 <div class="container">
-    <h1>📚 Archivio uscite – La Mia Ezine</h1>
-    <p><a href="index.html">← Torna all'editor</a></p>
+  <h1 id="pageTitle">📚 Archivio uscite</h1>
+  <p><a href="index.html">← Torna all'editor</a></p>
 
-    <div class="search">
-        <input type="text" id="searchTitle" placeholder="Cerca nel titolo...">
-        <input type="text" id="searchKeyword" placeholder="Parola chiave (nel testo degli articoli)">
-        <button id="searchBtn">🔍 Cerca</button>
-        <button id="resetBtn">⟳ Mostra tutti</button>
-    </div>
+  <div class="search" role="search">
+    <input type="search" id="searchTitle" placeholder="Cerca nel titolo…" aria-label="Cerca nel titolo">
+    <input type="search" id="searchKeyword" placeholder="Parola chiave (nel testo degli articoli)" aria-label="Parola chiave nel testo">
+    <button id="searchBtn">🔍 Cerca</button>
+    <button id="resetBtn" class="secondary">⟳ Mostra tutti</button>
+  </div>
 
-    <div id="keywordCloud" class="keyword-cloud">
-        <strong>📊 Parole più frequenti (globali):</strong> <span id="cloudSpan">Caricamento...</span>
-    </div>
+  <div class="keyword-cloud">
+    <strong>📊 Parole più frequenti nell'archivio:</strong> <span id="cloudSpan">Caricamento…</span>
+  </div>
 
+  <div class="table-wrap">
     <table id="archiveTable">
-        <thead>
-            <tr><th>ID</th><th>Titolo</th><th>Data uscita</th><th>Caratteri</th><th>Parole</th><th>Dimensione (KB)</th><th>Azioni</th></tr>
-        </thead>
-        <tbody></tbody>
+      <thead>
+        <tr><th>ID</th><th>Titolo</th><th>Data uscita</th><th>Ultima modifica</th><th>Parole</th><th>Caratteri</th><th>Azioni</th></tr>
+      </thead>
+      <tbody></tbody>
     </table>
-    <div class="footer">Archivio dinamico – Le parole più frequenti danno un'idea dei temi ricorrenti nell'archivio.</div>
+  </div>
+  <div class="empty" id="emptyMsg" hidden>Nessuna uscita in archivio.</div>
+
+  <div class="tools">
+    <div class="tool">
+      <h2>💾 Backup</h2>
+      <p>Un unico file .zip con uscite, cronologia delle versioni, impostazioni della testata e immagini caricate.</p>
+      <a class="btn" href="api/backup.php">Scarica il backup</a>
+    </div>
+    <div class="tool">
+      <h2>♻️ Ripristino</h2>
+      <p>Aggiunge le uscite contenute nel backup senza cancellare nulla. Quelle già presenti vengono saltate.</p>
+      <input type="file" id="restoreFile" accept=".zip,application/zip" aria-label="File di backup">
+      <label style="display:block;font-size:0.8rem;margin-top:6px"><input type="checkbox" id="restoreSettings"> Sostituisci anche le impostazioni della testata</label>
+      <button id="restoreBtn">Ripristina</button>
+      <div class="result" id="restoreResult"></div>
+    </div>
+    <div class="tool">
+      <h2>🧹 Immagini inutilizzate</h2>
+      <p>Le immagini caricate e poi tolte dagli articoli restano sul server. Qui le trovi e le elimini.</p>
+      <button id="cleanupCheckBtn" class="secondary">Controlla</button>
+      <button id="cleanupDoBtn" hidden>Elimina</button>
+      <div class="result" id="cleanupResult"></div>
+    </div>
+  </div>
+
+  <div class="footer">Le parole più frequenti danno un'idea dei temi ricorrenti nell'archivio.</div>
 </div>
 
+<dialog id="revDialog" aria-labelledby="revTitle">
+  <div class="dlg-head"><strong id="revTitle">Cronologia</strong><button class="secondary" id="revClose">Chiudi</button></div>
+  <div class="dlg-body" id="revBody"></div>
+</dialog>
+
+<script src="assets/render.js"></script>
 <script>
-    let allIssues = [];
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  let allIssues = [];
+  let settings = Ezine.masthead();
 
-    async function loadStats() {
-        const res = await fetch('stats.php');
-        allIssues = await res.json();
-        renderTable(allIssues);
-        computeGlobalKeywords(allIssues);
+  async function api(path, opts = {}) {
+    const res = await fetch(path, opts);
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) { const e = new Error(out.error || `Errore HTTP ${res.status}`); e.status = res.status; throw e; }
+    return out;
+  }
+  const postJson = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  const fmtDate = s => {
+    if (!s) return '';
+    const d = new Date(s.replace(' ', 'T') + 'Z');   // SQLite salva in UTC
+    return isNaN(d) ? s : d.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+  };
+  const fmtBytes = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+
+  function renderTable(issues) {
+    const tbody = document.querySelector('#archiveTable tbody');
+    tbody.innerHTML = '';
+    $('emptyMsg').hidden = issues.length > 0;
+    for (const issue of issues) {
+      const row = tbody.insertRow();
+      row.insertCell().textContent = issue.id;
+      row.insertCell().textContent = issue.title;
+      row.insertCell().textContent = issue.data || '';
+      row.insertCell().textContent = fmtDate(issue.updated_at);
+      const w = row.insertCell(); w.className = 'num'; w.textContent = issue.word_count ?? '';
+      const c = row.insertCell(); c.className = 'num'; c.textContent = issue.char_count ?? '';
+      const actions = row.insertCell();
+      actions.className = 'actions';
+      const add = (label, fn, cls) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        if (cls) b.className = cls;
+        b.addEventListener('click', fn);
+        actions.appendChild(b);
+      };
+      add('👁️ Visualizza', () => openRendered(issue.id, false));
+      add('✏️ Modifica', () => { location.href = `index.html?edit=${issue.id}`; });
+      add('📄 Duplica', () => { location.href = `index.html?from=${issue.id}`; }, 'secondary');
+      add('🕘 Cronologia', () => showRevisions(issue));
+      add('🖨️ Stampa', () => openRendered(issue.id, true));
+      add('🗑️ Elimina', () => deleteIssue(issue));
     }
+  }
 
-    function renderTable(issues) {
-        const tbody = document.querySelector('#archiveTable tbody');
-        tbody.innerHTML = '';
-        for (let issue of issues) {
-            const row = tbody.insertRow();
-            row.insertCell(0).innerText = issue.id;
-            row.insertCell(1).innerText = issue.title;
-            row.insertCell(2).innerText = issue.data;
-            row.insertCell(3).innerText = issue.char_count;
-            row.insertCell(4).innerText = issue.word_count;
-            row.insertCell(5).innerText = issue.size_kb;
-            const actions = row.insertCell(6);
-            const viewBtn = document.createElement('button');
-            viewBtn.innerText = '👁️ Visualizza';
-            viewBtn.onclick = () => viewIssue(issue.id);
-            const editBtn = document.createElement('button');
-            editBtn.innerText = '✏️ Modifica';
-            editBtn.onclick = () => editIssue(issue.id);
-            const printBtn = document.createElement('button');
-            printBtn.innerText = '🖨️ Stampa';
-            printBtn.onclick = () => printIssue(issue.id);
-            const deleteBtn = document.createElement('button');
-            deleteBtn.innerText = '🗑️ Elimina';
-            deleteBtn.onclick = () => deleteIssue(issue.id);
-            actions.append(viewBtn, editBtn, printBtn, deleteBtn);
-        }
+  async function loadStats() {
+    try {
+      allIssues = await api('api/list_issues.php');
+      renderTable(allIssues);
+    } catch (e) {
+      $('emptyMsg').hidden = false;
+      $('emptyMsg').textContent = 'Archivio non disponibile: ' + e.message;
     }
+    loadKeywords();
+  }
 
-    // Un'uscita salvata potrebbe non avere tutte le sezioni (contenuto scritto da
-    // una versione precedente, o inviato direttamente all'API). Senza questi
-    // valori di default il render lancia un TypeError e la finestra non si apre
-    // affatto, senza alcun messaggio.
-    function contenutoCompleto(c) {
-        const d = Object.assign({
-            fullWidth: null, nextIssue: '', fixedRubric: ''
-        }, c || {});
-        d.header = Object.assign({ anno: '', numero: '', data: '', titleColor: '#8b1f1f' }, d.header);
-        d.straightFromTheMan = Object.assign({ text: '' }, d.straightFromTheMan);
-        d.fakeAd = Object.assign({ text: '', enabled: false, colored: false }, d.fakeAd);
-        for (const k of ['colLeft', 'colRight', 'roundup', 'letters', 'fight']) {
-            if (!Array.isArray(d[k])) d[k] = [];
-        }
-        return d;
+  async function loadKeywords() {
+    const span = $('cloudSpan');
+    try {
+      const words = await api('api/keywords.php');
+      span.innerHTML = '';
+      if (!words.length) { span.textContent = 'nessuna parola ancora.'; return; }
+      for (const { word, count } of words) {
+        const s = document.createElement('span');
+        s.className = 'keyword';
+        s.textContent = `${word} (${count})`;
+        span.appendChild(s);
+      }
+    } catch (e) { span.textContent = 'non disponibile.'; }
+  }
+
+  // Apre l'uscita in una finestra; le uscite archiviate usano la testata con cui
+  // sono state salvate, non quella attuale.
+  async function openRendered(id, print, revisionId) {
+    const w = window.open('', '_blank');
+    if (!w) { alert('Il browser ha bloccato la finestra: consenti i pop-up per questo sito.'); return; }
+    w.document.write('<p style="font:16px sans-serif;padding:2rem">Caricamento…</p>');
+    try {
+      const r = revisionId ? await api(`api/revisions.php?id=${revisionId}`) : await api(`api/load_issue.php?id=${id}`);
+      const mh = r.content && r.content.masthead ? r.content.masthead : settings;
+      const title = revisionId ? `Uscita ${id} – versione del ${fmtDate(r.saved_at)}` : `Uscita ${id} – ${r.title}`;
+      const html = print
+        ? await Ezine.printDocument(r.content, mh, { title })
+        : await Ezine.exportDocument(r.content, mh, { title });
+      w.document.open(); w.document.write(html); w.document.close();
+    } catch (e) {
+      w.close();
+      alert(`Impossibile aprire l'uscita ${id}: ${e.message}`);
     }
+  }
 
-    function renderFullNewspaper(data) {
-        data = contenutoCompleto(data);
-        let html = '';
+  async function deleteIssue(issue) {
+    if (!confirm(`Eliminare l'uscita #${issue.id} «${issue.title}»?\n\nVerrà eliminata anche la sua cronologia. Le immagini restano finché non usi la pulizia.`)) return;
+    try { await postJson('api/delete_issue.php', { id: issue.id }); loadStats(); }
+    catch (e) { alert('Eliminazione non riuscita: ' + e.message); }
+  }
 
-        const h = data.header;
-        const titleColor = h.titleColor || "#8b1f1f";
-        html += `
-            <div class="header">
-                <div class="title-wrapper">
-                    <img class="header-logo" src="UO LOGO.png" alt="UO Logo" onerror="this.style.display='none'">
-                    <div class="title">
-                        <span class="underground" style="color: ${titleColor};">UNDERGROUND</span><span class="observer"> OBSERVER</span>
-                    </div>
-                </div>
-                <div class="motto">“Il tuo giornale, a modo tuo”</div>
-                <div class="subhead">INDIPENDENTE • LIBERO • PERSONALE</div>
-                <div class="edition-info">
-                    <span>Anno ${h.anno} – Numero ${h.numero}</span>
-                    <span>${h.data}</span>
-                    <span>Libero</span>
-                </div>
-                <div class="edition-info">
-                    <span>📧 email@esempio.it</span>
-                    <span>La Mia Ezine © ${new Date().getFullYear()}</span>
-                </div>
-            </div>`;
+  async function showRevisions(issue) {
+    $('revTitle').textContent = `Cronologia di #${issue.id} «${issue.title}»`;
+    const body = $('revBody');
+    body.textContent = 'Caricamento…';
+    $('revDialog').showModal();
+    try {
+      const revs = await api(`api/revisions.php?issue_id=${issue.id}`);
+      body.innerHTML = '';
+      if (!revs.length) { body.textContent = 'Nessuna versione precedente: la cronologia si riempie a ogni “Aggiorna”.'; return; }
+      const intro = document.createElement('p');
+      intro.style.fontSize = '0.8rem';
+      intro.textContent = 'Ogni aggiornamento conserva la versione che stava sostituendo (fino a 30). Ripristinarne una salva prima quella attuale, quindi si può sempre tornare indietro.';
+      body.appendChild(intro);
+      for (const r of revs) {
+        const row = document.createElement('div');
+        row.className = 'rev';
+        const info = document.createElement('span');
+        info.textContent = `${fmtDate(r.saved_at)} · ${r.title}${r.reason ? ` · ${r.reason}` : ''}`;
+        const btns = document.createElement('span');
+        const see = document.createElement('button');
+        see.className = 'secondary'; see.textContent = '👁️ Visualizza';
+        see.addEventListener('click', () => openRendered(issue.id, false, r.id));
+        const rest = document.createElement('button');
+        rest.textContent = '↩️ Ripristina';
+        rest.addEventListener('click', async () => {
+          if (!confirm(`Ripristinare la versione del ${fmtDate(r.saved_at)}?`)) return;
+          try {
+            await postJson('api/restore_revision.php', { revision_id: r.id });
+            $('revDialog').close();
+            loadStats();
+            alert('Versione ripristinata. Quella che c\'era prima è ora nella cronologia.');
+          } catch (e) { alert('Ripristino non riuscito: ' + e.message); }
+        });
+        btns.append(see, rest);
+        row.append(info, btns);
+        body.appendChild(row);
+      }
+    } catch (e) { body.textContent = 'Cronologia non disponibile: ' + e.message; }
+  }
 
-        function getImageClass(style) {
-            if (style === 'woodcut') return 'img-woodcut';
-            if (style === 'bitmap') return 'img-bitmap';
-            return '';
-        }
-        function renderImageBlock(art) {
-            if (!art.image) return '';
-            const imgClass = getImageClass(art.imageStyle);
-            const floatClass = (art.imageFloat === 'left' || art.imageFloat === 'right') ? `float-${art.imageFloat}` : '';
-            const captionHtml = art.imageCaption ? `<div class="caption">${art.imageCaption}</div>` : '';
-            return `<div class="image-wrapper ${floatClass}"><img class="article-img ${imgClass}" src="${art.image}" alt="illustrazione">${captionHtml}</div>`;
-        }
-        function insertImageInline(text, imgBlock) {
-            if (!imgBlock) return text;
-            const mid = Math.floor(text.length / 2);
-            let pos = text.lastIndexOf(' ', mid);
-            if (pos === -1) pos = mid;
-            return text.slice(0, pos) + ' ' + imgBlock + ' ' + text.slice(pos);
-        }
-        function renderArticleContent(art, isFullWidth = false) {
-            if (!art) return '';
-            let content = '';
-            if (art.kicker) content += `<div class="kicker">${art.kicker}</div>`;
-            if (art.title) {
-                if (isFullWidth && art.fwTitleSize) {
-                    content += `<h2 style="font-size: ${art.fwTitleSize}; text-align: ${art.fwTitleAlign || 'center'}; border-left: none; padding-left: 0;">${art.title}</h2>`;
-                } else {
-                    content += `<h2>${art.title}</h2>`;
-                }
-            }
-            if (art.byline) content += `<div class="byline">${art.byline}</div>`;
-            const imgBlock = renderImageBlock(art);
-            const pos = art.imagePosition || 'top';
-            const isFloated = (art.imageFloat === 'left' || art.imageFloat === 'right');
-            const textAlignStyle = (isFullWidth && art.fwTextAlign) ? `style="text-align: ${art.fwTextAlign};"` : '';
-
-            if (isFullWidth && art.fwColumns && art.fwColumns !== '1') {
-                const columnCount = art.fwColumns;
-                if (pos === 'top') {
-                    if (imgBlock) content += imgBlock;
-                    content += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
-                } else if (pos === 'bottom') {
-                    content += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
-                    if (imgBlock) content += imgBlock;
-                } else {
-                    if (imgBlock) {
-                        const textWithImage = insertImageInline(art.text, imgBlock);
-                        content += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${textWithImage.replace(/\n/g, '<br>')}</div>`;
-                    } else {
-                        content += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
-                    }
-                }
-            } else {
-                if (pos === 'top') {
-                    if (imgBlock) content += imgBlock;
-                    content += `<p ${textAlignStyle}>${art.text}</p>`;
-                } else if (pos === 'bottom') {
-                    content += `<p ${textAlignStyle}>${art.text}</p>`;
-                    if (imgBlock) content += imgBlock;
-                } else {
-                    if (imgBlock) {
-                        if (isFloated) {
-                            const textWithImage = insertImageInline(art.text, imgBlock);
-                            content += `<p ${textAlignStyle}>${textWithImage}</p>`;
-                        } else {
-                            const parts = art.text.split(/\n\s*\n/);
-                            if (parts.length > 1) {
-                                parts.splice(1, 0, imgBlock);
-                                content += `<p ${textAlignStyle}>${parts.join('</p><p ' + textAlignStyle + '>')}</p>`;
-                            } else {
-                                const mid = Math.floor(art.text.length / 2);
-                                let pos = art.text.lastIndexOf(' ', mid);
-                                if (pos === -1) pos = mid;
-                                content += `<p ${textAlignStyle}>${art.text.slice(0, pos)}</p>${imgBlock}<p ${textAlignStyle}>${art.text.slice(pos)}</p>`;
-                            }
-                        }
-                    } else {
-                        content += `<p ${textAlignStyle}>${art.text}</p>`;
-                    }
-                }
-                if (isFloated && (pos === 'top' || pos === 'middle')) content += `<div class="clearfix"></div>`;
-            }
-            return content;
-        }
-
-        if (data.fullWidth) {
-            html += `<div class="full-width">${renderArticleContent(data.fullWidth, true)}</div>`;
-        }
-
-        html += `<div class="columns-2"><div>`;
-        if (data.colLeft) {
-            data.colLeft.forEach(art => { html += `<article>${renderArticleContent(art)}</article>`; });
-        }
-        html += `</div><div>`;
-        if (data.colRight) {
-            data.colRight.forEach(art => { html += `<article>${renderArticleContent(art)}</article>`; });
-        }
-        html += `</div></div>`;
-
-        if (data.fakeAd && data.fakeAd.enabled) {
-            const coloredClass = data.fakeAd.colored ? 'fake-ad-colored' : '';
-            html += `<div class="fake-ad ${coloredClass}">${data.fakeAd.text}</div>`;
-        }
-
-        html += `<div class="feature-box"><h3>✊ STRAIGHT FROM THE MAN</h3><p>${data.straightFromTheMan.text}</p></div><hr>`;
-
-        html += `<div class="columns-3">`;
-        html += `<div><h2>🌍 ROUNDUP</h2><div>`;
-        if (data.roundup) { data.roundup.forEach(item => { html += `<p>${item.text}</p>`; }); }
-        html += `</div></div>`;
-        html += `<div><h2>📬 LETTERE</h2><div>`;
-        if (data.letters) { data.letters.forEach(item => { html += `<p>${item.text}</p>`; }); }
-        html += `</div></div>`;
-        html += `<div><h2>⚡ FIGHT THE POWER</h2><div>`;
-        if (data.fight) { data.fight.forEach(item => { html += `<p>${item.text}</p>`; }); }
-        html += `</div></div></div>`;
-
-        html += `<footer><div class="edition-info">`;
-        html += `<span>➤ PROSSIMO NUMERO: ${data.nextIssue || ''}</span>`;
-        html += `<span>➤ RUBRICA FISSA: ${data.fixedRubric || ''}</span>`;
-        html += `</div>`;
-        html += `<p style="margin-top:0.8rem;">La Mia Ezine non si assume responsabilità per le allucinazioni uditive e visive derivanti dalla lettura ad alta voce di questo foglio. Vietato fotocopiare per fini commerciali – incoraggiato fotocopiare per fini sovversivi.</p></footer>`;
-        return html;
+  async function search() {
+    const titleFilter = $('searchTitle').value.toLowerCase();
+    const keyword = $('searchKeyword').value.trim();
+    let filtered = allIssues;
+    if (keyword) {
+      try { filtered = await api('api/search_issues.php?q=' + encodeURIComponent(keyword)); }
+      catch (e) { alert('Ricerca non riuscita: ' + e.message); return; }
     }
+    if (titleFilter) filtered = filtered.filter(i => (i.title || '').toLowerCase().includes(titleFilter));
+    renderTable(filtered);
+  }
 
-    async function viewIssue(id) {
-        try {
-            const res = await fetch(`load_issue.php?id=${id}`);
-            const data = await res.json();
-            if (data.error) { alert(data.error); return; }
-            const fullHtml = renderFullNewspaper(data.content);
-            const css = document.getElementById('newspaper-css').innerHTML;
-            const win = window.open('', '_blank');
-            win.document.write(`<!DOCTYPE html><html><head><title>Uscita ${id} – La Mia Ezine</title><style>${css}</style></head><body><div class="newspaper">${fullHtml}</div></body></html>`);
-            win.document.close();
-        } catch (e) {
-            alert(`Impossibile aprire l'uscita ${id}: ${e.message}`);
-        }
-    }
+  async function restore() {
+    const f = $('restoreFile').files[0];
+    if (!f) { alert('Scegli prima un file di backup (.zip).'); return; }
+    const fd = new FormData();
+    fd.append('backup', f);
+    if ($('restoreSettings').checked) fd.append('restore_settings', '1');
+    $('restoreBtn').disabled = true;
+    $('restoreResult').textContent = 'Ripristino in corso…';
+    try {
+      const r = await api('api/restore_backup.php', { method: 'POST', body: fd });
+      $('restoreResult').textContent =
+        `Uscite aggiunte: ${r.issues_imported} (già presenti, saltate: ${r.issues_skipped})\n` +
+        `Versioni in cronologia: ${r.revisions_imported}\n` +
+        `Immagini aggiunte: ${r.images_imported} (già presenti: ${r.images_skipped}${r.images_invalid ? `, non valide: ${r.images_invalid}` : ''})\n` +
+        `Impostazioni: ${r.settings_restored ? 'ripristinate' : 'invariate'}`;
+      loadStats();
+    } catch (e) { $('restoreResult').textContent = 'Ripristino non riuscito: ' + e.message; }
+    finally { $('restoreBtn').disabled = false; }
+  }
 
-    async function editIssue(id) { window.location.href = `index.html?edit=${id}`; }
-    async function printIssue(id) {
-        try {
-            const res = await fetch(`load_issue.php?id=${id}`);
-            const data = await res.json();
-            if (data.error) { alert(data.error); return; }
-            const fullHtml = renderFullNewspaper(data.content);
-            const css = document.getElementById('newspaper-css').innerHTML;
-            const win = window.open('', '_blank');
-            win.document.write(`<!DOCTYPE html><html><head><title>Stampa uscita ${id}</title><style>${css}</style><style>body{margin:0;padding:1rem;background:white;}</style></head><body><div class="newspaper">${fullHtml}</div></body></html>`);
-            win.document.close();
-            win.print();
-        } catch (e) {
-            alert(`Impossibile stampare l'uscita ${id}: ${e.message}`);
-        }
-    }
-    async function deleteIssue(id) {
-        if (confirm(`Eliminare l'uscita ID ${id}?`)) {
-            const res = await fetch('delete_issue.php', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: id}) });
-            const result = await res.json();
-            if (result.success) loadStats();
-            else alert('Errore: ' + result.error);
-        }
-    }
+  async function cleanupCheck() {
+    $('cleanupResult').textContent = 'Controllo…';
+    try {
+      const r = await api('api/cleanup_images.php');
+      $('cleanupDoBtn').hidden = r.count === 0;
+      $('cleanupResult').textContent = r.count
+        ? `${r.count} immagini non più usate (${fmtBytes(r.bytes)}). ${r.in_use} in uso, non verranno toccate.`
+        : `Nessuna immagine inutilizzata. ${r.in_use} in uso.`;
+    } catch (e) { $('cleanupResult').textContent = 'Controllo non riuscito: ' + e.message; }
+  }
 
-    // Campi che contengono testo scritto davvero dall'autore. Tutto il resto
-    // dell'oggetto va ignorato: i nomi dei campi, i valori di servizio come
-    // "normal"/"none"/"article", e soprattutto 'image', che porta le immagini
-    // in base64. Conteggiare l'intero JSON riempiva la nuvola di parole come
-    // "text", "type" o "header" invece delle parole degli articoli.
-    const CAMPI_TESTUALI = new Set(['text', 'title', 'kicker', 'byline', 'imageCaption', 'nextIssue', 'fixedRubric']);
+  async function cleanupDo() {
+    if (!confirm('Eliminare definitivamente le immagini inutilizzate? Non è reversibile, se non da un backup.')) return;
+    try {
+      const r = await postJson('api/cleanup_images.php', { confirm: true });
+      $('cleanupDoBtn').hidden = true;
+      $('cleanupResult').textContent = `Eliminate ${r.deleted} immagini (${fmtBytes(r.bytes)}).`;
+    } catch (e) { $('cleanupResult').textContent = 'Eliminazione non riuscita: ' + e.message; }
+  }
 
-    function estraiTestoRedazionale(nodo, chiave) {
-        if (typeof nodo === 'string') return CAMPI_TESTUALI.has(chiave) ? nodo + ' ' : '';
-        if (Array.isArray(nodo)) return nodo.map(v => estraiTestoRedazionale(v, chiave)).join('');
-        if (nodo && typeof nodo === 'object') {
-            return Object.entries(nodo).map(([k, v]) => estraiTestoRedazionale(v, k)).join('');
-        }
-        return '';
-    }
+  $('searchBtn').addEventListener('click', search);
+  for (const id of ['searchTitle', 'searchKeyword']) $(id).addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+  $('resetBtn').addEventListener('click', () => { $('searchTitle').value = ''; $('searchKeyword').value = ''; renderTable(allIssues); });
+  $('revClose').addEventListener('click', () => $('revDialog').close());
+  $('restoreBtn').addEventListener('click', restore);
+  $('cleanupCheckBtn').addEventListener('click', cleanupCheck);
+  $('cleanupDoBtn').addEventListener('click', cleanupDo);
 
-    async function computeGlobalKeywords(issues) {
-        const stopwords = new Set(['il','lo','la','i','gli','le','un','uno','una','un','e','ed','o','ma','per','con','su','tra','fra','da','a','in','di','che','è','non','si','ci','ciò','questo','questa','questi','queste','quello','quella','quelli','quelle','io','tu','lui','lei','noi','voi','loro','mio','tuo','suo','nostro','vostro','loro','me','te','se','ne','gli','della','delle','dei','degli','alla','alle','ai','agli','dalla','dalle','dai','dagli','sulla','sulle','sui','sugli','essere','avere','fare','dire','potere','volere','sapere','stare','andare','venire','parte','cosa','tempo','anno','giorno','persona','modo','casa','vita','mondo','paese','stato','città','punto','fine','nome','fatto','caso','forza','valore','libro','parola','mano','occhio','testa','cuore','aria','acqua','fuoco','terra','cielo','mare','sole','luna','stella',
-            // forme elise: il tokenizer spezza "dell'antenna" in "dell" + "antenna"
-            'dell','nell','sull','dall','all','coll','quell','anch','dev','pò']);
-        let wordFreq = new Map();
-        for (let issue of issues) {
-            const res = await fetch(`load_issue.php?id=${issue.id}`);
-            const data = await res.json();
-            // Solo il testo redazionale, e senza i tag HTML ammessi nei testi
-            // (<strong>, <em>): altrimenti finivano contati come parole.
-            const text = estraiTestoRedazionale(data.content, null).replace(/<[^>]*>/g, ' ');
-            const words = text.toLowerCase().match(/\b[a-zàèéìòù]{4,}\b/g) || [];
-            for (let w of words) {
-                if (!stopwords.has(w) && w.length > 3) {
-                    wordFreq.set(w, (wordFreq.get(w) || 0) + 1);
-                }
-            }
-        }
-        const sorted = Array.from(wordFreq.entries()).sort((a,b) => b[1] - a[1]).slice(0, 30);
-        const cloudSpan = document.getElementById('cloudSpan');
-        cloudSpan.innerHTML = '';
-        for (let [word, count] of sorted) {
-            const span = document.createElement('span');
-            span.className = 'keyword';
-            span.innerText = `${word} (${count})`;
-            cloudSpan.appendChild(span);
-        }
-    }
-
-    document.getElementById('searchBtn').onclick = async () => {
-        const titleFilter = document.getElementById('searchTitle').value.toLowerCase();
-        const keyword = document.getElementById('searchKeyword').value.trim();
-        let filtered = allIssues;
-        if (keyword) {
-            // La ricerca nel testo è lato server: il client non ha i contenuti,
-            // perché stats.php non restituisce la colonna 'content'.
-            try {
-                const res = await fetch('search_issues.php?q=' + encodeURIComponent(keyword));
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                filtered = await res.json();
-            } catch (e) {
-                alert('Ricerca non riuscita: ' + e.message);
-                return;
-            }
-        }
-        if (titleFilter) filtered = filtered.filter(i => i.title.toLowerCase().includes(titleFilter));
-        renderTable(filtered);
-    };
-    document.getElementById('resetBtn').onclick = () => { document.getElementById('searchTitle').value = ''; document.getElementById('searchKeyword').value = ''; renderTable(allIssues); };
-
+  (async () => {
+    try { settings = Ezine.masthead((await api('api/settings.php')).masthead); } catch (e) { /* valori neutri */ }
+    document.title = `Archivio – ${settings.fullName}`;
+    $('pageTitle').textContent = `📚 Archivio uscite – ${settings.fullName}`;
+    Ezine.favicon(settings.nameA || settings.fullName, '#8b1f1f');
     loadStats();
+  })();
+})();
 </script>
 </body>
 </html>

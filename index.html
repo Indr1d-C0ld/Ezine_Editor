@@ -3,882 +3,1065 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>La Mia Ezine – Editor con Archivio</title>
-  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADoElEQVR4nO2bz0sbQRzFX2KsJpAaI1JUiKlRUER6qLQlYKBHDzlZ8CIIXjzkoAdz9R9oPetREMSDBRUKBfGgYNAW1PoDexASQ2maQmnqVsQkJj2tDXF3MzOZze4m+zkps3znvbff3Zlks4BJbWOp5GRvOzvzpMeGLy8rok3VSWgMl0KtQFQpytN4MbyD4FZMTdNy8AjDykOIFuZ5zVtWgloZl4K1G5g7QE/mAXY9TAHozbwIiy7qAPRqXoRWH1UAejcvQqOTOACjmBch1UsUgNHMi5DoLhmAUc2LlNKvGIDRzYso+eCyEzQysrsn0rM/PDeH/pERpsk/zszgdHVVcszt82Fia4uozjuvl+g4qd2iZAdUS+sXI+VLsgPKCSB0eAh7c7Pk2PnaGj5MTzPVfT4xgdezswCA9+PjiG5vM9Up7oKavwc8CKBa21+k2J/ZAYX/VPvZFyn0aXaA1gK0xgxA/KNWrn8R0a/ZAVoL0BozAK0FaI0ZAPeKeYXFxML+IMpi/S81rzQHJdwDyNzcyI7V2+3MdesdDqI5aOEewK0gyI4VmqClMLzbqyvmOsXwD0BBnLO9nbnu444Oojlo4R7Ar4sL2TGXxwOrzcZUt7mrCwCQvr7G32SSqYYU9wHw+uXFj6Mj+clsNnQMDlLXbGxqQmtvLwAgeXKCfC7HKu8e0S/3Dojv7SmuBL3BIHXNnuHh+875tr/PrE0K7gH8iccR3dmRHR8YHYXb5yOuV+9wwD81BQDIZbM4XlkpW2MhqmyEPs3Py3aB1WbDm6UltPT0lKzT6HJhZHERzrY2AMDXjQ0IiQRXrQ+ue14fi4fCYbwMhWTHc9ksztfXcbG5ieTxMW5SKeQyGTS6XGjp7oY3EMCzsTE0OJ0AgFQshqVgUHGZJaXwfqdaAJa6OgyFw3gxOVnWDhAAfp6dYSMUQioW4yFNOQCA75cjHr8fr0IhePx+6iCERAJflpfxeWEBd5kMFz3Fqx3bokxBPBJBPBKBy+vF00AATwYG0NrXB7vbjQanE48cDmTTaaQFAbeCgN/RKJKnp/h+cIDL3V3k7+5U1ad6ACKpWAyHnFqYJ5KrQKV+qFxpiJ8Oyx1sZOT8mF+IKA1WSxco+SjZAUYPoZR+okvAqCGQ6Ca+BxgtBFK9VDdBo4RAo5N6FdB7CLT6mJZBvYbAoot5H6C3EFj1cDGh5aP1ck8El52gVt3AY17zvUGexYqp2TdH5dDju8M1zz/rTU5pTXeKhgAAAABJRU5ErkJggg==">
+  <title>Editor</title>
+  <link rel="stylesheet" href="assets/newspaper.css">
   <style>
     * { box-sizing: border-box; }
-    body {
-      background: #2c2c2c;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 20px;
-    }
-    .editor-container { display: flex; gap: 20px; flex-wrap: wrap; }
+    body { background: #2c2c2c; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
+    .editor-container { display: flex; gap: 20px; align-items: flex-start; }
     .controls {
-      flex: 1.2; min-width: 340px; background: #f0ede8; padding: 1rem;
-      border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      max-height: 90vh; overflow-y: auto;
+      flex: 0 0 380px; background: #f0ede8; padding: 1rem; border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3); max-height: calc(100vh - 40px); overflow-y: auto;
+      position: sticky; top: 20px;
     }
     .preview {
-      flex: 2.5; background: #e6e3db; padding: 10px; border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto;
+      flex: 1; min-width: 0; background: #e6e3db; padding: 12px; border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4); max-height: calc(100vh - 40px);
+      /* barra verticale sempre presente: la larghezza disponibile non cambia
+         dopo il render, e la riduzione in scala resta esatta */
+      overflow-y: scroll; overflow-x: hidden;
     }
-    .preview .newspaper {
-      margin: 0 auto; background: #fef9ef; padding: 1rem;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    }
-    .control-group {
-      margin-bottom: 1.5rem; border-bottom: 1px solid #aaa; padding-bottom: 1rem;
-    }
-    .control-group h3 { margin-top: 0; color: #8b1f1f; }
-    label { font-weight: bold; display: block; margin-top: 8px; }
-    input, textarea, select {
-      width: 100%; padding: 6px; margin-top: 4px; font-family: monospace;
-    }
+    #measureBox { position: absolute; left: -10000px; top: 0; visibility: hidden; width: 210mm; }
+    #previewScaler { margin: 0 auto; }
+    #newspaperPreview { width: 210mm; transform-origin: top left; }
+    h1.app-title { font-size: 1.2rem; margin: 0 0 0.5rem; color: #2c2c2c; }
+    details.panel { border-bottom: 1px solid #b9b2a5; padding: 0.6rem 0; }
+    details.panel > summary { cursor: pointer; font-weight: bold; color: #8b1f1f; font-size: 1rem; list-style: none; }
+    details.panel > summary::before { content: '▸ '; }
+    details.panel[open] > summary::before { content: '▾ '; }
+    details.panel > summary:focus-visible { outline: 2px solid #8b1f1f; outline-offset: 2px; }
+    label { font-weight: bold; display: block; margin-top: 8px; font-size: 0.85rem; }
+    input, textarea, select { width: 100%; padding: 6px; margin-top: 4px; font-family: monospace; font-size: 0.85rem; border: 1px solid #aaa; border-radius: 3px; background: #fff; }
+    input[type=color] { height: 34px; padding: 2px; }
+    input[type=checkbox] { width: auto; margin: 0; }
+    textarea { resize: vertical; }
     button {
-      background: #8b1f1f; color: white; border: none; padding: 6px 12px;
-      margin-top: 8px; cursor: pointer; border-radius: 4px; margin-right: 6px;
+      background: #8b1f1f; color: #fff; border: none; padding: 6px 12px; margin-top: 8px;
+      cursor: pointer; border-radius: 4px; margin-right: 6px; font-size: 0.85rem;
     }
+    button:hover { filter: brightness(1.15); }
+    button:focus-visible { outline: 2px solid #2c2c2c; outline-offset: 2px; }
+    button:disabled { opacity: 0.5; cursor: wait; }
     button.secondary { background: #555; }
-    .inline-buttons { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
-    hr { margin: 15px 0; }
-    .status { background: #cfd8dc; padding: 4px; font-size: 0.7rem; text-align: center; }
-    .fullwidth-extra, .fakead-extra { display: none; margin-top: 0.5rem; }
-    .checkbox-inline { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-    .checkbox-inline label { margin-top: 0; }
-    .checkbox-inline input { width: auto; margin-top: 0; }
-  </style>
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row > * { flex: 1; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+    .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: normal; font-size: 0.85rem; }
+    .status { background: #cfd8dc; padding: 5px 8px; font-size: 0.75rem; margin-bottom: 4px; border-radius: 3px; }
+    .status.warn, .warn { background: #fff1c9; border: 1px solid #d9b44a; padding: 6px 8px; font-size: 0.75rem; border-radius: 3px; margin-top: 6px; }
+    .status.edit { background: #e9e2cf; }
+    .hint { font-size: 0.72rem; color: #555; margin-top: 4px; }
+    .md-bar { display: flex; gap: 4px; margin-top: 4px; }
+    .md-bar button { margin: 0; padding: 2px 9px; background: #6d6d6d; font-family: Georgia, serif; }
+    .thumb { display: flex; gap: 10px; align-items: center; margin-top: 6px; font-size: 0.75rem; color: #444; }
+    .thumb img { max-width: 110px; max-height: 80px; border: 1px solid #999; background: #fff; }
+    .pages-list .page-row { display: grid; grid-template-columns: auto 1fr 70px auto; gap: 6px; align-items: center; margin-top: 6px; font-size: 0.8rem; }
+    .pages-list .page-row input, .pages-list .page-row select { margin: 0; }
+    .pages-list .page-row button { margin: 0; padding: 4px 7px; }
+    .fit-list { font-size: 0.75rem; margin: 6px 0 0; padding-left: 1.1rem; }
+    .fit-list .ok { color: #1c6544; }
+    .fit-list .over { color: #a8261d; font-weight: bold; }
+    [hidden] { display: none !important; }
 
-  <style id="newspaper-css">
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #e6e3db; font-family: 'Courier New', Courier, 'Lucida Sans Typewriter', 'Lucida Typewriter', monospace; line-height: 1.35; color: #111; padding: 1.5rem; }
-    .newspaper { max-width: 1100px; margin: 0 auto; background: #fef9ef; padding: 2rem 1.5rem; box-shadow: 0 0 15px rgba(0,0,0,0.2); border: 1px solid #222; }
-    .header { text-align: center; border-bottom: 4px double #111; margin-bottom: 1.2rem; padding-bottom: 0.8rem; }
-    .title-wrapper { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 0.2rem; }
-    .header-logo { height: 60px; width: auto; filter: grayscale(0.1); }
-    .title { font-size: 4.2rem; font-weight: 800; letter-spacing: -1px; font-family: 'Georgia', 'Clarendon', 'Times New Roman', serif; text-transform: uppercase; line-height: 1.1; text-shadow: 0.02em 0.02em 0px rgba(0,0,0,0.08), -0.02em -0.01em 0px rgba(0,0,0,0.05), 0.04em 0.03em 0px rgba(0,0,0,0.02); transform: rotate(0.2deg); }
-    .title .underground { color: #8b1f1f; display: inline-block; }
-    .title .observer { color: #000000; display: inline-block; }
-    .motto { font-style: italic; font-size: 0.7rem; letter-spacing: 0px; font-family: 'Courier New', Courier, monospace; margin-top: 0.2rem; color: #444; }
-    .subhead { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; border-top: 1px solid #333; border-bottom: 1px solid #333; display: inline-block; padding: 0.2rem 0; margin-top: 0.2rem; font-family: 'Courier New', Courier, monospace; }
-    .edition-info {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.7rem;
-      font-family: monospace;
-      margin-top: 0.5rem;
-      border-top: 1px solid #888;
-      padding-top: 0.5rem;
+    /* comandi di modifica dentro l'anteprima (mai nell'export né in stampa) */
+    .newspaper.editing .ez-tools { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+    .newspaper.editing .ez-btn {
+      font: 11px/1.2 'Segoe UI', sans-serif; padding: 3px 7px; margin: 0; border: none; border-radius: 3px;
+      background: #8b1f1f; color: #fff; cursor: pointer; text-transform: none; letter-spacing: 0;
     }
-    .edition-info span:first-child { flex: 1; text-align: left; }
-    .edition-info span:last-child { flex: 1; text-align: right; }
-    .edition-info span:not(:first-child):not(:last-child) { flex: 1; text-align: center; }
-    article { margin-bottom: 1rem; }
-    .full-width { margin-bottom: 1.5rem; border-bottom: 1px dashed #aaa; padding-bottom: 0.8rem; }
-    .fullwidth-columns {
-      column-gap: 1.8rem;
-      column-rule: 1px solid #ccc;
-      font-size: 0.82rem; /* stessa dimensione del corpo normale */
+    .newspaper.editing p .ez-tools { display: inline-flex; margin-left: 4px; vertical-align: middle; }
+    .newspaper.editing .ez-ghost { outline: 2px dashed #8b1f1f; outline-offset: 3px; background: rgba(139,31,31,0.06); }
+    .newspaper.editing .ez-empty { color: #777; font-size: 0.75rem; }
+    .newspaper.editing article[draggable="true"] { cursor: grab; }
+    .newspaper.editing article.dragging { opacity: 0.35; }
+    .newspaper.editing .drop-before { box-shadow: 0 -3px 0 #8b1f1f; }
+    .newspaper.editing .ez-drop.drag-over { outline: 2px dashed #888; outline-offset: 2px; min-height: 40px; }
+    .newspaper.editing .page.ez-overflow { border-color: #a8261d; box-shadow: 0 0 0 3px rgba(168,38,29,0.35); }
+
+    @media (max-width: 900px) {
+      body { padding: 10px; }
+      .editor-container { flex-direction: column; }
+      .controls { flex: none; width: 100%; position: static; max-height: none; }
+      .preview { width: 100%; max-height: none; }
     }
-    .fullwidth-columns p {
-      break-inside: avoid;
-      margin-bottom: 0.6rem;
-    }
-    h2 { font-size: 1.5rem; font-weight: 800; text-transform: uppercase; border-left: 5px solid #c00; padding-left: 0.5rem; margin: 0.7rem 0 0.4rem 0; }
-    .kicker { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #a00; }
-    .byline { font-size: 0.7rem; font-weight: bold; border-bottom: 1px dotted #aaa; margin-bottom: 0.4rem; display: inline-block; }
-    p { font-size: 0.82rem; text-align: justify; margin-bottom: 0.6rem; }
-    .feature-box { border: 2px solid #111; padding: 0.8rem; background: #f4efdf; margin: 1rem 0; font-family: 'Courier New', Courier, monospace; }
-    .feature-box h3 { font-size: 1rem; font-weight: 800; text-transform: uppercase; background: #111; color: #fef9ef; display: inline-block; padding: 0.1rem 0.4rem; letter-spacing: 1px; margin-bottom: 0.5rem; }
-    hr { margin: 1rem 0; border: none; border-top: 1px solid #222; }
-    .fake-ad { font-size: 0.7rem; text-align: center; border: 1px dashed #444; padding: 0.4rem; margin: 0.6rem 0; background: #e9e2cf; }
-    .fake-ad-colored { background: #d4b8b8 !important; border: 1px solid #8b1f1f !important; color: #2c0a0a; }
-    footer { margin-top: 2rem; border-top: 2px solid #111; padding-top: 0.8rem; font-size: 0.65rem; text-align: center; font-family: monospace; }
-    @media screen { 
-      .columns-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.2rem 0; } 
-      .columns-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; } 
-    }
-    @media print { 
-      body { background: white; padding: 0; margin: 0; } 
-      .newspaper { max-width: 100%; padding: 0.8rem; box-shadow: none; background: white; } 
-      .columns-2, .columns-3 { display: block; column-count: 2; column-gap: 1.8rem; column-rule: 1px solid #aaa; } 
-      .columns-3 { column-count: 3; } 
-      article, .fake-ad { break-inside: avoid; page-break-inside: avoid; } 
-      .feature-box, .header, footer, hr { break-inside: avoid; } 
-      .title { transform: none; } 
-    }
-    .article-img { max-width: 100%; margin: 0.5rem 0; border: 1px solid #aaa; display: block; }
-    .float-left { float: left; margin: 0.5rem 1rem 0.5rem 0; max-width: 45%; }
-    .float-right { float: right; margin: 0.5rem 0 0.5rem 1rem; max-width: 45%; }
-    .clearfix::after { content: ""; clear: both; display: table; }
-    .img-woodcut { filter: grayscale(1) contrast(300%) brightness(90%) !important; image-rendering: crisp-edges; }
-    .img-bitmap { filter: grayscale(1) contrast(200%) brightness(80%) !important; image-rendering: pixelated; }
-    .caption { font-size: 0.65rem; font-style: italic; text-align: center; margin-top: -0.2rem; margin-bottom: 0.5rem; color: #444; }
-    .image-wrapper { margin: 0.5rem 0; display: inline-block; width: 100%; }
-    .float-left .image-wrapper, .float-right .image-wrapper { display: block; width: auto; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
 <div class="editor-container">
   <div class="controls">
-    <h2>🖋️ Editor – La Mia Ezine</h2>
-    <div class="status" id="saveStatus">✅ Modifiche automaticamente salvate</div>
-    <div class="status" id="editModeStatus" style="background:#e9e2cf; display:none;">✏️ Modalità modifica attiva</div>
+    <h1 class="app-title" id="appTitle">Editor</h1>
+    <div class="status" id="draftStatus">Caricamento…</div>
+    <div class="status edit" id="editStatus" hidden></div>
 
-    <div class="control-group">
-      <h3>📅 Dati di testata</h3>
-      <label>Anno</label><input type="text" id="anno" value="I">
-      <label>Numero</label><input type="text" id="numero" value="0">
-      <label>Data</label><input type="text" id="data" value="">
-      <label>Colore "Underground"</label><input type="color" id="titleColor" value="#8b1f1f">
-    </div>
-
-    <div class="control-group">
-      <h3>📚 Archivio e Salvataggio</h3>
-      <label>Titolo uscita (per salvare)</label><input type="text" id="issueTitle" placeholder="Es. Numero 1 - Giugno 2026">
-      <button id="saveIssueBtn">💾 Salva nuova uscita</button>
-      <button id="updateIssueBtn" style="display:none;">🔄 Aggiorna uscita corrente</button>
-      <button id="archiveBtn">📂 Apri archivio</button>
-      <div style="font-size:0.7rem; margin-top:5px;">Le uscite vengono salvate in database SQLite e consultabili nell'archivio.</div>
-    </div>
-
-    <div class="control-group">
-      <h3>➕ Aggiungi / Modifica contenuto</h3>
-      <select id="targetSection">
-        <option value="fullWidth">Articolo FULL-WIDTH (sopra colonne)</option>
-        <option value="colLeft">Prima pagina - SINISTRA</option>
-        <option value="colRight">Prima pagina - DESTRA</option>
-        <option value="straight">Straight from the Man</option>
-        <option value="roundup">Roundup (nuova voce)</option>
-        <option value="letters">Lettere (nuova voce)</option>
-        <option value="fight">Fight the Power (nuova voce)</option>
-        <option value="fakeAd">Consiglio (con sfondo)</option>
-        <option value="nextIssue">Anticipazione (footer)</option>
-        <option value="rubric">Rubrica fissa (footer)</option>
-      </select>
-      <label>Titolo (o intestazione)</label><input type="text" id="newTitle" placeholder="Titolo articolo">
-      
-      <!-- CAMPI FULL-WIDTH -->
-      <div id="fullwidthExtra" class="fullwidth-extra">
-        <label>Dimensione titolo (full-width)</label>
-        <select id="fwTitleSize">
-          <option value="2rem">2rem (normale)</option><option value="2.5rem">2.5rem (medio)</option>
-          <option value="3rem">3rem (grande)</option><option value="3.5rem">3.5rem (extra grande)</option>
-          <option value="4rem">4rem (molto grande)</option><option value="4.5rem">4.5rem (enorme)</option>
-          <option value="5rem">5rem (gigante)</option><option value="5.5rem">5.5rem (extra gigante)</option>
-          <option value="6rem">6rem (maxi)</option>
-        </select>
-        <label>Allineamento titolo</label>
-        <select id="fwTitleAlign">
-          <option value="left">Sinistra</option><option value="center">Centrato</option><option value="right">Destra</option>
-        </select>
-        <label>Allineamento testo</label>
-        <select id="fwTextAlign">
-          <option value="justify">Giustificato (giornale)</option><option value="left">Sinistra (normale)</option>
-        </select>
-        <label>Numero colonne per il corpo</label>
-        <select id="fwColumns">
-          <option value="1">1 colonna (normale)</option>
-          <option value="2">2 colonne</option>
-          <option value="3">3 colonne</option>
-        </select>
+    <details class="panel" open>
+      <summary>📅 Testata del numero</summary>
+      <div class="row-2">
+        <div><label for="anno">Anno</label><input id="anno"></div>
+        <div><label for="numero">Numero</label><input id="numero"></div>
       </div>
-      
-      <label>Testo</label><textarea id="newText" rows="3" placeholder="Contenuto..."></textarea>
-      <label>Scegli icona/kicker (opzionale)</label>
-      <select id="kickerSelect">
-        <option value="">-- Nessuna --</option>
-        <option value="🔍 ESCLUSIVO">🔍 ESCLUSIVO</option>
-        <option value="🛸 CONTROLLO MENTALE">🛸 CONTROLLO MENTALE</option>
-        <option value="⚔️ GUERRA PSICHICA">⚔️ GUERRA PSICHICA</option>
-        <option value="💻 TECNO-DENUNCIA">💻 TECNO-DENUNCIA</option>
-        <option value="🌍 AMBIENTE IN PERICOLO">🌍 AMBIENTE IN PERICOLO</option>
-        <option value="🏥 SALUTE PUBBLICA">🏥 SALUTE PUBBLICA</option>
-        <option value="📢 DENUNCIA">📢 DENUNCIA</option>
-        <option value="✊ AZIONE DIRETTA">✊ AZIONE DIRETTA</option>
-        <option value="🎭 SATIRA">🎭 SATIRA</option>
-        <option value="🔎 MISTERO">🔎 MISTERO</option>
-        <option value="📡 ONDE PIRATA">📡 ONDE PIRATA</option>
-        <option value="📻 SPETTRO RADIO">📻 SPETTRO RADIO</option>
-      </select>
-      <label>Kicker personalizzato</label><input type="text" id="newKicker" placeholder="Es. 🔥 FALSO ALLARME">
-      <label>Byline</label><input type="text" id="newByline">
-      <label>URL immagine (opzionale)</label><input type="text" id="newImage" placeholder="https://... .jpg">
-      <label>Allineamento orizzontale immagine</label>
-      <select id="imageFloat">
-        <option value="none">Nessuno (centrato)</option>
-        <option value="left">A sinistra (testo a fianco)</option>
-        <option value="right">A destra (testo a fianco)</option>
-      </select>
-      <label>Posizione verticale</label>
-      <select id="imagePosition">
-        <option value="top">In cima (tra titolo e testo)</option>
-        <option value="middle">In mezzo (dentro il testo)</option>
-        <option value="bottom">In basso (dopo il testo)</option>
-      </select>
-      <label>Didascalia (opzionale)</label><input type="text" id="imageCaption" placeholder="Es. Foto: manifestazione">
-      <label>Stile immagine</label>
-      <select id="imageStyle">
-        <option value="normal">Normale</option>
-        <option value="woodcut">Xilografia</option>
-        <option value="bitmap">Bitmap rumorosa</option>
-      </select>
-      
-      <!-- Sezione checkbox per sfondo colorato: visibile solo se la sezione corrente è fakeAd -->
-      <div id="fakeadExtra" class="fakead-extra">
-        <div class="checkbox-inline">
-          <input type="checkbox" id="coloredBg">
-          <label>Sfondo colorato (fake-ad style)</label>
+      <label for="data">Data</label><input id="data">
+      <label for="titleColor">Colore del nome</label><input type="color" id="titleColor">
+    </details>
+
+    <details class="panel" open>
+      <summary>➕ Contenuto</summary>
+      <label for="targetSection">Destinazione</label>
+      <select id="targetSection"></select>
+
+      <div data-for="article">
+        <label for="newTitle">Titolo</label><input id="newTitle" placeholder="Titolo articolo">
+      </div>
+
+      <div id="fullwidthExtra" hidden>
+        <div class="row-2">
+          <div><label for="fwTitleSize">Dimensione titolo</label>
+            <select id="fwTitleSize">
+              <option value="2rem">2rem</option><option value="2.5rem">2.5rem</option><option value="3rem">3rem</option>
+              <option value="3.5rem">3.5rem</option><option value="4rem">4rem</option><option value="4.5rem">4.5rem</option>
+              <option value="5rem">5rem</option><option value="5.5rem">5.5rem</option><option value="6rem">6rem</option>
+            </select></div>
+          <div><label for="fwColumns">Colonne del testo</label>
+            <select id="fwColumns"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+          <div><label for="fwTitleAlign">Allineamento titolo</label>
+            <select id="fwTitleAlign"><option value="left">Sinistra</option><option value="center">Centrato</option><option value="right">Destra</option></select></div>
+          <div><label for="fwTextAlign">Allineamento testo</label>
+            <select id="fwTextAlign"><option value="justify">Giustificato</option><option value="left">Sinistra</option></select></div>
         </div>
       </div>
 
-      <div>
-        <button id="addContentBtn">➕ Aggiungi / Aggiorna</button>
-        <button id="cancelEditBtn" class="secondary" style="display:none;">❌ Annulla modifica</button>
+      <label for="newText">Testo</label>
+      <div class="md-bar" role="toolbar" aria-label="Formattazione">
+        <button type="button" data-md="bold" title="Grassetto"><b>B</b></button>
+        <button type="button" data-md="italic" title="Corsivo"><i>I</i></button>
+        <button type="button" data-md="link" title="Link">🔗</button>
+        <button type="button" data-md="para" title="Nuovo paragrafo">¶</button>
       </div>
-    </div>
+      <textarea id="newText" rows="5" placeholder="Contenuto…"></textarea>
+      <div class="hint">**grassetto** · *corsivo* · [testo](https://…) · riga vuota = nuovo paragrafo</div>
 
-    <div class="control-group">
-      <h3>🗂️ Gestione sezioni</h3>
-      <button id="resetAllBtn" class="secondary">⟳ Resetta TUTTO</button>
-      <button id="printBtn" class="secondary">🖨️ Stampa / PDF</button>
+      <div data-for="article">
+        <div class="row-2">
+          <div><label for="kickerSelect">Occhiello</label>
+            <select id="kickerSelect">
+              <option value="">— nessuno —</option>
+              <option>🔍 ESCLUSIVO</option><option>🛸 CONTROLLO MENTALE</option><option>⚔️ GUERRA PSICHICA</option>
+              <option>💻 TECNO-DENUNCIA</option><option>🌍 AMBIENTE IN PERICOLO</option><option>🏥 SALUTE PUBBLICA</option>
+              <option>📢 DENUNCIA</option><option>✊ AZIONE DIRETTA</option><option>🎭 SATIRA</option>
+              <option>🔎 MISTERO</option><option>📡 ONDE PIRATA</option><option>📻 SPETTRO RADIO</option>
+            </select></div>
+          <div><label for="newKicker">o personalizzato</label><input id="newKicker" placeholder="🔥 FALSO ALLARME"></div>
+        </div>
+        <label for="newByline">Firma</label><input id="newByline">
+
+        <label for="imageFile">Immagine</label>
+        <div class="row">
+          <input type="file" id="imageFile" accept="image/jpeg,image/png,image/webp,image/gif">
+          <button type="button" id="imageClear" class="secondary" style="flex:0 0 auto">Rimuovi</button>
+        </div>
+        <div class="thumb" id="imageThumbBox" hidden><img id="imageThumb" alt=""><span id="imageInfo"></span></div>
+        <div class="hint">Caricata dal computer: metadati e posizione GPS vengono rimossi.</div>
+        <label for="newImage">o indirizzo di un'immagine esterna</label>
+        <input id="newImage" placeholder="https://…">
+        <div class="warn" id="externalWarn" hidden>Immagine esterna: chi apre il giornale contatterà quel sito, che vedrà il suo indirizzo IP, e se il file viene rimosso sparisce anche dal tuo numero. Meglio scaricarla e caricarla qui.</div>
+
+        <label for="imageStyle">Stile immagine</label>
+        <select id="imageStyle"></select>
+        <div class="row-2">
+          <div><label for="imageFloat">Orizzontale</label>
+            <select id="imageFloat"><option value="none">Centrata</option><option value="left">A sinistra</option><option value="right">A destra</option></select></div>
+          <div><label for="imagePosition">Verticale</label>
+            <select id="imagePosition"><option value="top">In cima</option><option value="middle">In mezzo</option><option value="bottom">In fondo</option></select></div>
+        </div>
+        <label for="imageCaption">Didascalia</label><input id="imageCaption" placeholder="Foto: manifestazione">
+      </div>
+
+      <label class="check" id="coloredRow" hidden><input type="checkbox" id="coloredBg"> Sfondo colorato</label>
+
+      <div>
+        <button id="addContentBtn">➕ Aggiungi</button>
+        <button id="cancelEditBtn" class="secondary" hidden>Annulla</button>
+      </div>
+      <div class="hint">L'anteprima mostra il contenuto mentre scrivi, tratteggiato finché non lo aggiungi. Gli articoli si spostano anche trascinandoli.</div>
+    </details>
+
+    <details class="panel">
+      <summary>📄 Pagine</summary>
+      <div class="hint">La prima pagina ha la struttura classica. Le pagine interne sono a colonne, con il testo che scorre da una colonna all'altra.</div>
+      <div class="pages-list" id="pagesList"></div>
+      <button id="addPageBtn">➕ Aggiungi pagina interna</button>
+    </details>
+
+    <details class="panel" open>
+      <summary>📚 Archivio</summary>
+      <div class="status" id="issueStatus"></div>
+      <label for="issueTitle">Titolo dell'uscita</label>
+      <input id="issueTitle" placeholder="Es. Numero 1 – Giugno 2026">
+      <button id="updateIssueBtn" hidden>🔄 Aggiorna uscita</button>
+      <button id="saveIssueBtn">💾 Salva come nuova uscita</button>
+      <button id="nextIssueBtn" class="secondary">📄 Nuovo numero da questo</button>
+      <button id="archiveBtn" class="secondary">📂 Apri archivio</button>
+    </details>
+
+    <details class="panel">
+      <summary>🖨️ Stampa ed esportazione</summary>
+      <label class="check"><input type="checkbox" id="bwMode"> Bianco e nero ad alto contrasto (fotocopia)</label>
+      <button id="printBtn">🖨️ Stampa A4</button>
+      <button id="bookletBtn">📖 Stampa a libretto A5</button>
       <button id="exportBtn" class="secondary">💾 Esporta HTML</button>
-    </div>
+      <div class="hint" id="bookletInfo"></div>
+      <ul class="fit-list" id="fitList"></ul>
+    </details>
+
+    <details class="panel">
+      <summary>⚙️ Impostazioni della testata</summary>
+      <div class="hint">Valgono per tutti i numeri. Ogni uscita archiviata conserva la testata con cui è stata salvata.</div>
+      <div class="row-2">
+        <div><label for="mhNameA">Nome, parte colorata</label><input id="mhNameA" data-mh="nameA"></div>
+        <div><label for="mhNameB">Nome, seconda parte</label><input id="mhNameB" data-mh="nameB"></div>
+      </div>
+      <label for="mhFullName">Nome per esteso</label><input id="mhFullName" data-mh="fullName">
+      <label for="mhMotto">Motto</label><input id="mhMotto" data-mh="motto">
+      <label for="mhSubhead">Sottotitolo</label><input id="mhSubhead" data-mh="subhead">
+      <div class="row-2">
+        <div><label for="mhContact">Contatto</label><input id="mhContact" data-mh="contact" placeholder="lascia vuoto per nasconderlo"></div>
+        <div><label for="mhPrice">Prezzo</label><input id="mhPrice" data-mh="price"></div>
+      </div>
+      <label for="mhDisclaimer">Nota a piè di pagina</label>
+      <textarea id="mhDisclaimer" data-mh="disclaimer" rows="3"></textarea>
+      <div class="hint">{nome} viene sostituito con il nome per esteso.</div>
+      <label for="mhLogo">Logo</label>
+      <div class="row">
+        <input id="mhLogo" data-mh="logo" placeholder="percorso dell'immagine">
+        <input type="file" id="mhLogoFile" accept="image/png,image/jpeg,image/webp" style="flex:0 0 120px">
+      </div>
+      <div class="row-2">
+        <div><label for="mhSecStraight">Riquadro</label><input id="mhSecStraight" data-mh-section="straight"></div>
+        <div><label for="mhSecRoundup">Colonna 1</label><input id="mhSecRoundup" data-mh-section="roundup"></div>
+        <div><label for="mhSecLetters">Colonna 2</label><input id="mhSecLetters" data-mh-section="letters"></div>
+        <div><label for="mhSecFight">Colonna 3</label><input id="mhSecFight" data-mh-section="fight"></div>
+      </div>
+      <label for="mhExportName">Nome dei file esportati</label><input id="mhExportName" data-mh="exportName">
+      <div class="hint" id="settingsStatus"></div>
+    </details>
+
+    <details class="panel">
+      <summary>🗂️ Ripristino</summary>
+      <button id="resetAllBtn" class="secondary">⟳ Ricomincia dal contenuto di esempio</button>
+    </details>
   </div>
 
-  <div class="preview">
-    <div id="newspaperPreview" class="newspaper"></div>
+  <div class="preview" id="previewPane">
+    <div id="previewScaler"><div id="newspaperPreview"></div></div>
   </div>
 </div>
 
+<script src="assets/render.js"></script>
+<script src="assets/images.js"></script>
 <script>
-  let newspaperData = {
-    header: { anno: "I", numero: "0", data: "", titleColor: "#8b1f1f" },
-    fullWidth: null,
-    colLeft: [],
-    colRight: [],
-    straightFromTheMan: { text: "<strong>Ignazio “Naz” Marra</strong> – La tua playlist non ti appartiene. Se ti ritrovi a canticchiare tormentoni prodotti in serie da algoritmi svedesi, potresti essere bersaglio di un attacco armonico indotto. Smettetela di ballare, ragazzi. Iniziate a dubitare." },
-    roundup: [],
-    letters: [],
-    fight: [],
-    fakeAd: { text: "⚠️ CONSIGLIO DELL’OSSERVATORE: guardate solo programmi con rating IMDb sotto 5.0 – proteggete i vostri occhi e la vostra sanità mentale.", enabled: true, colored: false },
-    nextIssue: "Le miniere di litio in Sardegna e il patto segreto con le EV car",
-    fixedRubric: "“Unravel the Mystery” – Il triangolo delle Bermuda spiegato (non come pensi)"
-  };
-  let editing = { active: false, section: null, index: null };
-  let currentIssueId = null;
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const LOCAL_KEY = 'ezine.bozza';
 
-  // Il contenuto può arrivare da localStorage o dal database e non avere tutte
-  // le sezioni (versioni precedenti, dati salvati a mano). Senza questi valori
-  // di default il render lancia un TypeError e l'anteprima resta vuota.
-  function contenutoCompleto(c) {
-    const d = Object.assign({ fullWidth: null, nextIssue: '', fixedRubric: '' }, c || {});
-    d.header = Object.assign({ anno: 'I', numero: '0', data: '', titleColor: '#8b1f1f' }, d.header);
-    d.straightFromTheMan = Object.assign({ text: '' }, d.straightFromTheMan);
-    d.fakeAd = Object.assign({ text: '', enabled: false, colored: false }, d.fakeAd);
-    for (const k of ['colLeft', 'colRight', 'roundup', 'letters', 'fight']) {
-      if (!Array.isArray(d[k])) d[k] = [];
-    }
-    return d;
+  const STATIC_TARGETS = [
+    ['fullWidth', 'Articolo full-width (sopra le colonne)'],
+    ['colLeft', 'Prima pagina – sinistra'],
+    ['colRight', 'Prima pagina – destra'],
+    ['straight', 'Riquadro in evidenza'],
+    ['roundup', 'Colonna 1 (nuova voce)'],
+    ['letters', 'Colonna 2 (nuova voce)'],
+    ['fight', 'Colonna 3 (nuova voce)'],
+    ['fakeAd', 'Consiglio'],
+    ['nextIssue', 'Anticipazione (piè di pagina)'],
+    ['rubric', 'Rubrica fissa (piè di pagina)']
+  ];
+  const TEXT_ONLY = ['straight', 'roundup', 'letters', 'fight', 'fakeAd', 'nextIssue', 'rubric'];
+  const DEFAULT_STRAIGHT = '<strong>Ignazio “Naz” Marra</strong> – La tua playlist non ti appartiene. Se ti ritrovi a canticchiare tormentoni prodotti in serie da algoritmi svedesi, potresti essere bersaglio di un attacco armonico indotto. Smettetela di ballare, ragazzi. Iniziate a dubitare.';
+
+  let content = null;          // il numero in lavorazione (fonte di verità)
+  let mh = Ezine.masthead();   // impostazioni della testata
+  let issue = { id: null, updatedAt: null };  // uscita d'archivio collegata
+  let dirty = false;           // modifiche non ancora archiviate
+  let editing = null;          // { loc, index } quando si modifica un elemento esistente
+  let formImage = { image: '', imageOriginal: '', imageBaked: false };
+
+  // ---------- utilità ----------
+
+  function todayIt() {
+    const s = new Date().toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  const timeIt = d => (d || new Date()).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  async function api(path, opts = {}) {
+    const res = await fetch(path, opts);
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) { const e = new Error(out.error || `Errore HTTP ${res.status}`); e.status = res.status; e.body = out; throw e; }
+    return out;
+  }
+  const postJson = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  function exampleContent() {
+    return Ezine.normalize({
+      header: { anno: 'I', numero: '0', data: todayIt(), titleColor: '#8b1f1f' },
+      fullWidth: {
+        type: 'article', title: "SPECIALE: L'EDITOR ORA SUPPORTA ARTICOLI FULL-WIDTH",
+        text: "Questa è una dimostrazione di un articolo che occupa l'intera larghezza della pagina, ideale per notizie di prima pagina o editoriali. Puoi aggiungerlo, modificarlo o eliminarlo usando i pulsanti sottostanti.\n\nIl testo può essere suddiviso in più colonne, come nei veri giornali. Prova a selezionare 2 o 3 colonne dal pannello di controllo.",
+        kicker: '🔥 IN PRIMO PIANO', byline: 'Redazione', image: '', imageFloat: 'none', imagePosition: 'top',
+        imageCaption: '', imageStyle: 'normal', fwTitleSize: '3rem', fwTitleAlign: 'center', fwTextAlign: 'justify', fwColumns: '2'
+      },
+      colLeft: [
+        { type: 'article', title: "I tuoi dati nel WC dell'aeroporto?", text: 'Nuove prove suggeriscono che i bagni pubblici degli aeroporti internazionali siano dotati di aspiratori silenziosi per il campionamento del DNA. Un ex tecnico TSA ha rivelato l’esistenza del programma “Project Soggy Swab”.', kicker: '🔍 ESCLUSIVO', byline: 'Redazione', image: '', imageFloat: 'none', imagePosition: 'top', imageCaption: '', imageStyle: 'normal' },
+        { type: 'article', title: 'MORTE PER BALLOTTAGGIO', text: 'Un candidato sindaco a Bogotà è stato trascinato per 3 km dietro un carro dei rifiuti dopo aver promesso “trasparenza nei contratti dei rifiuti”.', kicker: '', byline: 'dalla nostra inviata', image: '', imageFloat: 'none', imagePosition: 'top', imageCaption: '', imageStyle: 'normal' }
+      ],
+      colRight: [
+        { type: 'article', title: 'Allarme: serie TV “di qualità” causano strabismo', text: 'I nostri Alpha-scanner hanno rilevato array di particelle subliminali nei segnali 4K di produzioni come Severance e The White Lotus.', kicker: '🛸 CONTROLLO MENTALE', byline: '', image: '', imageFloat: 'none', imagePosition: 'top', imageCaption: '', imageStyle: 'normal' },
+        { type: 'article', title: 'ALLARME MUCCHE PAZZE', text: 'L’Europa ci attacca con la malattia della mucca pazza? Un allevatore dell’Iowa accusa la Francia.', kicker: '', byline: '', image: '', imageFloat: 'none', imagePosition: 'top', imageCaption: '', imageStyle: 'normal' }
+      ],
+      straightFromTheMan: { text: DEFAULT_STRAIGHT },
+      roundup: [{ text: '**CLONAZIONE ALIENA** – Embrioni ibridi in Nebraska.' }, { text: '**GUERRA PSICHICA** – Bounty hunter psichici per giornalisti.' }],
+      letters: [{ text: '*“Ho scollegato l’antenna dopo il vostro articolo sul 5G”* – Lettore di Catanzaro' }],
+      fight: [{ text: 'Distribuisci questo foglio, stampalo e appendilo nei luoghi di ritrovo.' }],
+      fakeAd: { text: '⚠️ CONSIGLIO: guardate solo programmi con rating IMDb sotto 5.0', enabled: true, colored: false },
+      nextIssue: 'Le miniere di litio in Sardegna e il patto segreto con le EV car',
+      fixedRubric: '“Unravel the Mystery” – Il triangolo delle Bermuda',
+      pages: []
+    });
   }
 
-  function getCurrentItalianDate() {
-    const d = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    let formatted = d.toLocaleDateString('it-IT', options);
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  // ---------- luoghi del giornale ----------
+
+  const isArticleLoc = loc => ['fullWidth', 'colLeft', 'colRight'].includes(loc) || /^page:\d+$/.test(loc);
+  function listOf(d, loc) {
+    if (loc === 'colLeft' || loc === 'colRight' || ['roundup', 'letters', 'fight'].includes(loc)) return d[loc];
+    const m = /^page:(\d+)$/.exec(loc);
+    return m && d.pages[+m[1]] ? d.pages[+m[1]].articles : null;
+  }
+  function locLabel(loc) {
+    const s = STATIC_TARGETS.find(t => t[0] === loc);
+    if (s) return s[1];
+    const m = /^page:(\d+)$/.exec(loc);
+    return m ? `Pagina ${+m[1] + 2}` : loc;
   }
 
-  function initExampleData() {
-    newspaperData.fullWidth = { 
-      type: "article", title: "SPECIALE: L'EDITOR ORA SUPPORTA ARTICOLI FULL-WIDTH", 
-      text: "Questa è una dimostrazione di un articolo che occupa l'intera larghezza della pagina, ideale per notizie di prima plana o editoriali. Puoi aggiungerlo, modificarlo o eliminarlo usando i pulsanti sottostanti. Il testo può essere suddiviso in più colonne, come nei veri giornali. Prova a selezionare 2 o 3 colonne dal pannello di controllo. Le immagini possono essere posizionate sopra, dentro o sotto le colonne, e il titolo rimane a tutta larghezza.", 
-      kicker: "🔥 IN PRIMO PIANO", byline: "Redazione", image: "", imageFloat: "none", 
-      imagePosition: "top", imageCaption: "", imageStyle: "normal",
-      fwTitleSize: "3rem", fwTitleAlign: "center", fwTextAlign: "justify", fwColumns: "2"
+  // ---------- modulo ----------
+
+  function readForm() {
+    const loc = $('targetSection').value;
+    const kicker = $('newKicker').value || $('kickerSelect').value;
+    const text = $('newText').value;
+    const external = $('newImage').value.trim();
+    const img = external ? { image: external, imageOriginal: '', imageBaked: false } : formImage;
+    const item = {
+      type: 'article', title: $('newTitle').value, text, kicker, byline: $('newByline').value,
+      image: img.image, imageOriginal: img.imageOriginal, imageBaked: img.imageBaked,
+      imageFloat: $('imageFloat').value, imagePosition: $('imagePosition').value,
+      imageCaption: $('imageCaption').value, imageStyle: $('imageStyle').value
     };
-    newspaperData.colLeft = [
-      { type: "article", title: "I tuoi dati nel WC dell'aeroporto?", text: "Nuove prove suggeriscono che i bagni pubblici degli aeroporti internazionali siano dotati di aspiratori silenziosi per il campionamento del DNA. Un ex tecnico TSA ha rivelato l’esistenza del programma “Project Soggy Swab”.", kicker: "🔍 ESCLUSIVO", byline: "Redazione Osservatore", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" },
-      { type: "article", title: "MORTE PER BALLOTTAGGIO", text: "Un candidato sindaco a Bogotà è stato trascinato per 3 km dietro un carro dei rifiuti dopo aver promesso “trasparenza nei contratti dei rifiuti”.", kicker: "", byline: "dalla nostra inviata", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" }
-    ];
-    newspaperData.colRight = [
-      { type: "article", title: "Allarme: serie TV “di qualità” causano strabismo", text: "I nostri Alpha-scanner hanno rilevato array di particelle subliminali nei segnali 4K di produzioni come Severance e The White Lotus.", kicker: "🛸 CONTROLLO MENTALE", byline: "", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" },
-      { type: "article", title: "ALLARME MUCCHE PAZZE", text: "L’Europa ci attacca con la malattia della mucca pazza? Un allevatore dell’Iowa accusa la Francia.", kicker: "", byline: "", image: "", imageFloat: "none", imagePosition: "top", imageCaption: "", imageStyle: "normal" }
-    ];
-    newspaperData.roundup = [
-      { text: "<strong>CLONAZIONE ALIENA</strong> – Embrioni ibridi in Nebraska." },
-      { text: "<strong>GUERRA PSICHICA</strong> – Bounty hunter psichici per giornalisti." }
-    ];
-    newspaperData.letters = [
-      { text: "<em>“Ho scollegato l’antenna dopo il vostro articolo sul 5G”</em> – Lettore di Catanzaro" }
-    ];
-    newspaperData.fight = [
-      { text: "Distribuisci questo PDF, stampalo e appendilo nei luoghi di ritrovo." }
-    ];
-    newspaperData.fakeAd = { text: "⚠️ CONSIGLIO: guardate solo programmi con rating IMDb sotto 5.0", enabled: true, colored: false };
-    newspaperData.nextIssue = "Le miniere di litio in Sardegna e il patto segreto con le EV car";
-    newspaperData.fixedRubric = "“Unravel the Mystery” – Il triangolo delle Bermuda";
+    if (loc === 'fullWidth') Object.assign(item, {
+      fwTitleSize: $('fwTitleSize').value, fwTitleAlign: $('fwTitleAlign').value,
+      fwTextAlign: $('fwTextAlign').value, fwColumns: $('fwColumns').value
+    });
+    return { loc, item, text, colored: $('coloredBg').checked };
   }
 
-  function saveAndRender() {
-    newspaperData.header.anno = document.getElementById('anno').value;
-    newspaperData.header.numero = document.getElementById('numero').value;
-    newspaperData.header.data = document.getElementById('data').value;
-    newspaperData.header.titleColor = document.getElementById('titleColor').value;
-    localStorage.setItem('undergroundObserver', JSON.stringify(newspaperData));
-    renderNewspaper(false);
-    document.getElementById('saveStatus').innerText = '✅ Salvato ' + new Date().toLocaleTimeString();
-  }
+  const formIsEmpty = f => !f.item.title && !f.text.trim() && !f.item.image;
 
-  function getImageClass(style) {
-    if (style === 'woodcut') return 'img-woodcut';
-    if (style === 'bitmap') return 'img-bitmap';
-    return '';
-  }
-
-  function renderImageBlock(art) {
-    if (!art.image) return '';
-    const imgClass = getImageClass(art.imageStyle);
-    const floatClass = (art.imageFloat === 'left' || art.imageFloat === 'right') ? `float-${art.imageFloat}` : '';
-    const captionHtml = art.imageCaption ? `<div class="caption">${art.imageCaption}</div>` : '';
-    return `<div class="image-wrapper ${floatClass}"><img class="article-img ${imgClass}" src="${art.image}" alt="illustrazione">${captionHtml}</div>`;
-  }
-
-  function insertImageInline(text, imgBlock) {
-    if (!imgBlock) return text;
-    const mid = Math.floor(text.length / 2);
-    let pos = text.lastIndexOf(' ', mid);
-    if (pos === -1) pos = mid;
-    return text.slice(0, pos) + ' ' + imgBlock + ' ' + text.slice(pos);
-  }
-
-  function renderArticleContent(art, isFullWidth = false) {
-    if (!art) return '';
-    let html = '';
-    if (art.kicker) html += `<div class="kicker">${art.kicker}</div>`;
-    if (art.title) {
-      if (isFullWidth && art.fwTitleSize) {
-        html += `<h2 style="font-size: ${art.fwTitleSize}; text-align: ${art.fwTitleAlign || 'center'}; border-left: none; padding-left: 0;">${art.title}</h2>`;
-      } else {
-        html += `<h2>${art.title}</h2>`;
-      }
+  // Applica il modulo a una copia del contenuto; restituisce dove è finito l'elemento.
+  function applyForm(d, f, edit) {
+    const { loc, item, text } = f;
+    if (edit && isArticleLoc(edit.loc) && isArticleLoc(loc) && edit.loc !== loc) {
+      // destinazione cambiata durante la modifica: l'articolo si sposta
+      if (edit.loc === 'fullWidth') d.fullWidth = null; else listOf(d, edit.loc).splice(edit.index, 1);
+      edit = null;
     }
-    if (art.byline) html += `<div class="byline">${art.byline}</div>`;
-    
-    const imgBlock = renderImageBlock(art);
-    const pos = art.imagePosition || 'top';
-    const isFloated = (art.imageFloat === 'left' || art.imageFloat === 'right');
-    const textAlignStyle = (isFullWidth && art.fwTextAlign) ? `style="text-align: ${art.fwTextAlign};"` : '';
-    
-    if (isFullWidth && art.fwColumns && art.fwColumns !== '1') {
-      const columnCount = art.fwColumns;
-      if (pos === 'top') {
-        if (imgBlock) html += imgBlock;
-        html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
-      } else if (pos === 'bottom') {
-        html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
-        if (imgBlock) html += imgBlock;
-      } else { // middle
-        if (imgBlock) {
-          const textWithImage = insertImageInline(art.text, imgBlock);
-          html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${textWithImage.replace(/\n/g, '<br>')}</div>`;
-        } else {
-          html += `<div class="fullwidth-columns" style="column-count: ${columnCount};">${art.text.replace(/\n/g, '<br>')}</div>`;
-        }
-      }
-    } else {
-      if (pos === 'top') {
-        if (imgBlock) html += imgBlock;
-        html += `<p ${textAlignStyle}>${art.text}</p>`;
-      } else if (pos === 'bottom') {
-        html += `<p ${textAlignStyle}>${art.text}</p>`;
-        if (imgBlock) html += imgBlock;
-      } else { // middle
-        if (imgBlock) {
-          if (isFloated) {
-            const textWithImage = insertImageInline(art.text, imgBlock);
-            html += `<p ${textAlignStyle}>${textWithImage}</p>`;
-          } else {
-            const parts = art.text.split(/\n\s*\n/);
-            if (parts.length > 1) {
-              parts.splice(1, 0, imgBlock);
-              html += `<p ${textAlignStyle}>${parts.join('</p><p ' + textAlignStyle + '>')}</p>`;
-            } else {
-              const mid = Math.floor(art.text.length / 2);
-              let pos = art.text.lastIndexOf(' ', mid);
-              if (pos === -1) pos = mid;
-              html += `<p ${textAlignStyle}>${art.text.slice(0, pos)}</p>${imgBlock}<p ${textAlignStyle}>${art.text.slice(pos)}</p>`;
-            }
-          }
-        } else {
-          html += `<p ${textAlignStyle}>${art.text}</p>`;
-        }
-      }
-      if (isFloated && (pos === 'top' || pos === 'middle')) html += `<div class="clearfix"></div>`;
+    if (loc === 'fullWidth') { d.fullWidth = item; return { loc }; }
+    const list = listOf(d, loc);
+    if (list && isArticleLoc(loc)) {
+      if (edit) { list[edit.index] = item; return { loc, index: edit.index }; }
+      list.push(item); return { loc, index: list.length - 1 };
     }
-    return html;
+    if (list) {
+      if (edit) { list[edit.index] = { text }; return { loc, index: edit.index }; }
+      list.push({ text }); return { loc, index: list.length - 1 };
+    }
+    if (loc === 'straight') d.straightFromTheMan.text = text;
+    else if (loc === 'fakeAd') d.fakeAd = { text, enabled: true, colored: f.colored };
+    else if (loc === 'nextIssue') d.nextIssue = text;
+    else if (loc === 'rubric') d.fixedRubric = text;
+    return { loc };
   }
 
-  function renderNewspaper(clean = false) {
-    const d = newspaperData;
-    const h = d.header;
-    const titleColor = h.titleColor;
-    let html = `
-      <div class="header">
-        <div class="title-wrapper">
-          <img class="header-logo" src="UO LOGO.png" alt="UO Logo" onerror="this.style.display='none'">
-          <div class="title">
-            <span class="underground" style="color: ${titleColor};">UNDERGROUND</span><span class="observer"> OBSERVER</span>
-          </div>
-        </div>
-        <div class="motto">“Il tuo giornale, a modo tuo”</div>
-        <div class="subhead">INDIPENDENTE • LIBERO • PERSONALE</div>
-        <div class="edition-info">
-          <span>Anno ${h.anno} – Numero ${h.numero}</span>
-          <span>${h.data}</span>
-          <span>Libero</span>
-        </div>
-        <div class="edition-info">
-          <span>📧 email@esempio.it</span>
-          <span>La Mia Ezine © ${new Date().getFullYear()}</span>
-        </div>
-      </div>`;
-    
-    if (d.fullWidth) {
-      html += `<div class="full-width">${renderArticleContent(d.fullWidth, true)}`;
-      if (!clean) {
-        html += `<div class="inline-buttons"><button class="edit-fullwidth">✏️ Modifica</button><button class="delete-fullwidth">🗑️ Elimina</button></div>`;
-      }
-      html += `</div>`;
-    } else if (!clean) {
-      html += `<div class="full-width"><em>(Nessun articolo full-width. Aggiungine uno dal pannello.)</em><div class="inline-buttons"><button class="add-fullwidth-hint">➕ Aggiungi full-width</button></div></div>`;
-    }
-
-    html += `<div class="columns-2"><div>`;
-    d.colLeft.forEach((art, idx) => {
-      html += `<article>${renderArticleContent(art)}`;
-      if (!clean) {
-        html += `<div class="inline-buttons"><button class="edit-col" data-section="colLeft" data-index="${idx}">✏️ Modifica</button><button class="delete-col" data-section="colLeft" data-index="${idx}">🗑️ Elimina</button>`;
-        if (idx > 0) html += `<button class="move-up" data-section="colLeft" data-index="${idx}">⬆️ Su</button>`;
-        if (idx < d.colLeft.length-1) html += `<button class="move-down" data-section="colLeft" data-index="${idx}">⬇️ Giù</button>`;
-        html += `</div>`;
-      }
-      html += `</article>`;
-    });
-    html += `</div><div>`;
-    d.colRight.forEach((art, idx) => {
-      html += `<article>${renderArticleContent(art)}`;
-      if (!clean) {
-        html += `<div class="inline-buttons"><button class="edit-col" data-section="colRight" data-index="${idx}">✏️ Modifica</button><button class="delete-col" data-section="colRight" data-index="${idx}">🗑️ Elimina</button>`;
-        if (idx > 0) html += `<button class="move-up" data-section="colRight" data-index="${idx}">⬆️ Su</button>`;
-        if (idx < d.colRight.length-1) html += `<button class="move-down" data-section="colRight" data-index="${idx}">⬇️ Giù</button>`;
-        html += `</div>`;
-      }
-      html += `</article>`;
-    });
-    html += `</div></div>`;
-
-    if (d.fakeAd && d.fakeAd.enabled) {
-      const coloredClass = d.fakeAd.colored ? 'fake-ad-colored' : '';
-      html += `<div class="fake-ad ${coloredClass}">${d.fakeAd.text}`;
-      if (!clean) html += `<div class="inline-buttons"><button class="edit-fakead">✏️ Modifica</button><button class="delete-fakead">🗑️ Nascondi</button></div>`;
-      html += `</div>`;
-    } else if (!clean) {
-      html += `<div class="fake-ad"><em>Consiglio disabilitato</em><div class="inline-buttons"><button class="enable-fakead">➕ Attiva Consiglio</button></div></div>`;
-    }
-
-    html += `<div class="feature-box"><h3>✊ STRAIGHT FROM THE MAN</h3><p>${d.straightFromTheMan.text}</p>`;
-    if (!clean) html += `<div class="inline-buttons"><button class="edit-straight">✏️ Modifica</button><button class="reset-straight">⟳ Ripristina default</button></div>`;
-    html += `</div><hr>`;
-
-    html += `<div class="columns-3">`;
-    html += `<div><h2>🌍 ROUNDUP</h2><div>`;
-    d.roundup.forEach((item, idx) => {
-      html += `<p>${item.text}`;
-      if (!clean) html += ` <button class="edit-roundup" data-index="${idx}">✏️</button> <button class="delete-roundup" data-index="${idx}">🗑️</button>`;
-      html += `</p>`;
-    });
-    if (!clean) html += `<button class="add-roundup">+ Aggiungi voce</button>`;
-    html += `</div></div>`;
-    html += `<div><h2>📬 LETTERE</h2><div>`;
-    d.letters.forEach((item, idx) => {
-      html += `<p>${item.text}`;
-      if (!clean) html += ` <button class="edit-letter" data-index="${idx}">✏️</button> <button class="delete-letter" data-index="${idx}">🗑️</button>`;
-      html += `</p>`;
-    });
-    if (!clean) html += `<button class="add-letter">+ Aggiungi lettera</button>`;
-    html += `</div></div>`;
-    html += `<div><h2>⚡ FIGHT THE POWER</h2><div>`;
-    d.fight.forEach((item, idx) => {
-      html += `<p>${item.text}`;
-      if (!clean) html += ` <button class="edit-fight" data-index="${idx}">✏️</button> <button class="delete-fight" data-index="${idx}">🗑️</button>`;
-      html += `</p>`;
-    });
-    if (!clean) html += `<button class="add-fight">+ Aggiungi azione</button>`;
-    html += `</div></div></div>`;
-
-    html += `<footer><div class="edition-info">`;
-    html += `<span>➤ PROSSIMO NUMERO: ${d.nextIssue}`;
-    if (!clean) html += ` <button class="edit-nextissue">✏️</button> <button class="delete-nextissue">🗑️</button>`;
-    html += `</span>`;
-    html += `<span>➤ RUBRICA FISSA: ${d.fixedRubric}`;
-    if (!clean) html += ` <button class="edit-rubric">✏️</button> <button class="delete-rubric">🗑️</button>`;
-    html += `</span></div>`;
-    html += `<p style="margin-top:0.8rem;">La Mia Ezine non si assume responsabilità per le allucinazioni uditive e visive derivanti dalla lettura ad alta voce di questo foglio. Vietato fotocopiare per fini commerciali – incoraggiato fotocopiare per fini sovversivi.</p></footer>`;
-
-    if (!clean) {
-      document.getElementById('newspaperPreview').innerHTML = html;
-      attachDynamicEvents();
-    } else return html;
+  function clearForm() {
+    for (const id of ['newTitle', 'newText', 'newKicker', 'newByline', 'newImage', 'imageCaption']) $(id).value = '';
+    $('kickerSelect').value = '';
+    $('imageFloat').value = 'none';
+    $('imagePosition').value = 'top';
+    $('imageStyle').value = 'normal';
+    $('coloredBg').checked = false;
+    $('fwTitleSize').value = '3rem'; $('fwTitleAlign').value = 'center'; $('fwTextAlign').value = 'justify'; $('fwColumns').value = '2';
+    $('imageFile').value = '';
+    formImage = { image: '', imageOriginal: '', imageBaked: false };
+    showImageState();
   }
 
-  function attachDynamicEvents() {
-    document.querySelectorAll('.edit-fullwidth').forEach(btn => { btn.onclick = () => loadForEdit('fullWidth', null); });
-    document.querySelectorAll('.delete-fullwidth').forEach(btn => { btn.onclick = () => { newspaperData.fullWidth = null; saveAndRender(); }; });
-    document.querySelectorAll('.add-fullwidth-hint').forEach(btn => { btn.onclick = () => { document.getElementById('targetSection').value = 'fullWidth'; toggleExtraSections(); }; });
-    document.querySelectorAll('.edit-col').forEach(btn => { btn.onclick = () => loadForEdit(btn.dataset.section, parseInt(btn.dataset.index)); });
-    document.querySelectorAll('.delete-col').forEach(btn => { btn.onclick = () => { const s=btn.dataset.section, i=parseInt(btn.dataset.index); newspaperData[s].splice(i,1); saveAndRender(); }; });
-    document.querySelectorAll('.move-up').forEach(btn => { btn.onclick = () => { const s=btn.dataset.section, i=parseInt(btn.dataset.index); if(i>0){ [newspaperData[s][i-1], newspaperData[s][i]] = [newspaperData[s][i], newspaperData[s][i-1]]; saveAndRender(); } }; });
-    document.querySelectorAll('.move-down').forEach(btn => { btn.onclick = () => { const s=btn.dataset.section, i=parseInt(btn.dataset.index); if(i<newspaperData[s].length-1){ [newspaperData[s][i+1], newspaperData[s][i]] = [newspaperData[s][i], newspaperData[s][i+1]]; saveAndRender(); } }; });
-    document.querySelectorAll('.edit-fakead').forEach(btn => { btn.onclick = () => loadForEdit('fakeAd', null); });
-    document.querySelectorAll('.delete-fakead').forEach(btn => { btn.onclick = () => { newspaperData.fakeAd.enabled = false; saveAndRender(); }; });
-    document.querySelectorAll('.enable-fakead').forEach(btn => { btn.onclick = () => { newspaperData.fakeAd.enabled = true; if(!newspaperData.fakeAd.text) newspaperData.fakeAd.text = "⚠️ CONSIGLIO: difendete i vostri occhi dalla TV di qualità"; saveAndRender(); }; });
-    document.querySelectorAll('.edit-straight').forEach(btn => { btn.onclick = () => loadForEdit('straight', null); });
-    document.querySelectorAll('.reset-straight').forEach(btn => { btn.onclick = () => { newspaperData.straightFromTheMan.text = "<strong>Ignazio “Naz” Marra</strong> – La tua playlist non ti appartiene... Smettetela di ballare, ragazzi. Iniziate a dubitare."; saveAndRender(); }; });
-    document.querySelectorAll('.edit-roundup').forEach(btn => { btn.onclick = () => loadForEdit('roundup', parseInt(btn.dataset.index)); });
-    document.querySelectorAll('.delete-roundup').forEach(btn => { btn.onclick = () => { const i=parseInt(btn.dataset.index); newspaperData.roundup.splice(i,1); saveAndRender(); }; });
-    document.querySelectorAll('.add-roundup').forEach(btn => { btn.onclick = () => { let txt=prompt("Nuova voce per ROUNDUP:"); if(txt) { newspaperData.roundup.push({text: txt}); saveAndRender(); } }; });
-    document.querySelectorAll('.edit-letter').forEach(btn => { btn.onclick = () => loadForEdit('letters', parseInt(btn.dataset.index)); });
-    document.querySelectorAll('.delete-letter').forEach(btn => { btn.onclick = () => { const i=parseInt(btn.dataset.index); newspaperData.letters.splice(i,1); saveAndRender(); }; });
-    document.querySelectorAll('.add-letter').forEach(btn => { btn.onclick = () => { let txt=prompt("Nuova lettera:"); if(txt) { newspaperData.letters.push({text: txt}); saveAndRender(); } }; });
-    document.querySelectorAll('.edit-fight').forEach(btn => { btn.onclick = () => loadForEdit('fight', parseInt(btn.dataset.index)); });
-    document.querySelectorAll('.delete-fight').forEach(btn => { btn.onclick = () => { const i=parseInt(btn.dataset.index); newspaperData.fight.splice(i,1); saveAndRender(); }; });
-    document.querySelectorAll('.add-fight').forEach(btn => { btn.onclick = () => { let txt=prompt("Nuova azione:"); if(txt) { newspaperData.fight.push({text: txt}); saveAndRender(); } }; });
-    document.querySelectorAll('.edit-nextissue').forEach(btn => { btn.onclick = () => loadForEdit('nextIssue', null); });
-    document.querySelectorAll('.delete-nextissue').forEach(btn => { btn.onclick = () => { newspaperData.nextIssue = ""; saveAndRender(); }; });
-    document.querySelectorAll('.edit-rubric').forEach(btn => { btn.onclick = () => loadForEdit('rubric', null); });
-    document.querySelectorAll('.delete-rubric').forEach(btn => { btn.onclick = () => { newspaperData.fixedRubric = ""; saveAndRender(); }; });
+  function refreshFormVisibility() {
+    const loc = $('targetSection').value;
+    const article = isArticleLoc(loc);
+    document.querySelectorAll('[data-for="article"]').forEach(el => { el.hidden = !article; });
+    $('fullwidthExtra').hidden = loc !== 'fullWidth';
+    $('coloredRow').hidden = loc !== 'fakeAd';
+    $('addContentBtn').textContent = editing ? '✏️ Aggiorna' : '➕ Aggiungi';
   }
 
-  function loadForEdit(section, index) {
+  function rebuildTargets() {
+    const sel = $('targetSection');
+    const prev = sel.value || 'colLeft';
+    sel.innerHTML = '';
+    for (const [v, t] of STATIC_TARGETS) sel.add(new Option(t, v));
+    content.pages.forEach((p, i) => sel.add(new Option(`Pagina ${i + 2}${p.title ? ' – ' + p.title.replace(/<[^>]*>/g, '') : ''}`, `page:${i}`)));
+    sel.value = [...sel.options].some(o => o.value === prev) ? prev : 'colLeft';
+  }
+
+  function loadForEdit(loc, index) {
+    clearForm();
     let art = null;
-    if (section === 'fullWidth') art = newspaperData.fullWidth;
-    else if (section === 'colLeft' || section === 'colRight') art = newspaperData[section][index];
-    else if (section === 'straight') art = { text: newspaperData.straightFromTheMan.text };
-    else if (section === 'fakeAd') art = { text: newspaperData.fakeAd.text, colored: newspaperData.fakeAd.colored };
-    else if (section === 'roundup') art = { text: newspaperData.roundup[index].text };
-    else if (section === 'letters') art = { text: newspaperData.letters[index].text };
-    else if (section === 'fight') art = { text: newspaperData.fight[index].text };
-    else if (section === 'nextIssue') art = { text: newspaperData.nextIssue };
-    else if (section === 'rubric') art = { text: newspaperData.fixedRubric };
+    if (loc === 'fullWidth') art = content.fullWidth;
+    else if (isArticleLoc(loc)) art = listOf(content, loc)[index];
+    else if (['roundup', 'letters', 'fight'].includes(loc)) art = { text: listOf(content, loc)[index].text };
+    else if (loc === 'straight') art = { text: content.straightFromTheMan.text };
+    else if (loc === 'fakeAd') { art = { text: content.fakeAd.text }; $('coloredBg').checked = !!content.fakeAd.colored; }
+    else if (loc === 'nextIssue') art = { text: content.nextIssue };
+    else if (loc === 'rubric') art = { text: content.fixedRubric };
     if (!art) return;
-    document.getElementById('targetSection').value = section;
-    document.getElementById('newTitle').value = art.title || '';
-    document.getElementById('newText').value = art.text || '';
-    document.getElementById('newKicker').value = art.kicker || '';
-    document.getElementById('kickerSelect').value = '';
-    document.getElementById('newByline').value = art.byline || '';
-    document.getElementById('newImage').value = art.image || '';
-    document.getElementById('imageFloat').value = art.imageFloat || 'none';
-    document.getElementById('imagePosition').value = art.imagePosition || 'top';
-    document.getElementById('imageCaption').value = art.imageCaption || '';
-    document.getElementById('imageStyle').value = art.imageStyle || 'normal';
-    if (section === 'fakeAd') {
-      document.getElementById('coloredBg').checked = art.colored || false;
-    } else {
-      document.getElementById('coloredBg').checked = false;
+
+    $('targetSection').value = loc;
+    $('newTitle').value = art.title || '';
+    $('newText').value = art.text || '';
+    $('newByline').value = art.byline || '';
+    const known = [...$('kickerSelect').options].some(o => o.value && o.value === art.kicker);
+    if (known) $('kickerSelect').value = art.kicker; else $('newKicker').value = art.kicker || '';
+    if (art.image && art.imageOriginal) formImage = { image: art.image, imageOriginal: art.imageOriginal, imageBaked: !!art.imageBaked };
+    else if (art.image && /^uploads\//.test(art.image)) formImage = { image: art.image, imageOriginal: art.image, imageBaked: false };
+    else if (art.image) $('newImage').value = art.image;
+    $('imageFloat').value = art.imageFloat || 'none';
+    $('imagePosition').value = art.imagePosition || 'top';
+    $('imageCaption').value = art.imageCaption || '';
+    $('imageStyle').value = EzineImages.STYLES[art.imageStyle] ? art.imageStyle : (art.imageStyle === 'bitmap' ? 'dither' : 'normal');
+    if (loc === 'fullWidth') {
+      $('fwTitleSize').value = art.fwTitleSize || '3rem'; $('fwTitleAlign').value = art.fwTitleAlign || 'center';
+      $('fwTextAlign').value = art.fwTextAlign || 'justify'; $('fwColumns').value = art.fwColumns || '2';
     }
-    if (section === 'fullWidth') {
-      document.getElementById('fwTitleSize').value = art.fwTitleSize || '3rem';
-      document.getElementById('fwTitleAlign').value = art.fwTitleAlign || 'center';
-      document.getElementById('fwTextAlign').value = art.fwTextAlign || 'justify';
-      document.getElementById('fwColumns').value = art.fwColumns || '2';
-    } else {
-      document.getElementById('fwTitleSize').value = '3rem';
-      document.getElementById('fwTitleAlign').value = 'center';
-      document.getElementById('fwTextAlign').value = 'justify';
-      document.getElementById('fwColumns').value = '2';
-    }
-    toggleExtraSections();
-    editing = { active: true, section: section, index: index };
-    document.getElementById('editModeStatus').style.display = 'block';
-    document.getElementById('cancelEditBtn').style.display = 'inline-block';
-    document.getElementById('addContentBtn').innerHTML = '✏️ Aggiorna';
-    document.getElementById('targetSection').disabled = (section !== 'fullWidth' && section !== 'colLeft' && section !== 'colRight');
+    editing = { loc, index: index == null ? null : index };
+    $('editStatus').hidden = false;
+    $('editStatus').textContent = `✏️ Stai modificando: ${locLabel(loc)}${index != null && isArticleLoc(loc) ? `, articolo ${index + 1}` : ''}`;
+    $('cancelEditBtn').hidden = false;
+    // durante la modifica si può spostare un articolo, ma non trasformarlo in altro
+    [...$('targetSection').options].forEach(o => { o.disabled = isArticleLoc(loc) ? !isArticleLoc(o.value) : o.value !== loc; });
+    showImageState();
+    refreshFormVisibility();
+    renderPreview();
+    $('newText').focus();
   }
 
-  function toggleExtraSections() {
-    const section = document.getElementById('targetSection').value;
-    const fullDiv = document.getElementById('fullwidthExtra');
-    const fakeDiv = document.getElementById('fakeadExtra');
-    fullDiv.style.display = (section === 'fullWidth') ? 'block' : 'none';
-    fakeDiv.style.display = (section === 'fakeAd') ? 'block' : 'none';
-  }
-
-  function cancelEdit() {
-    editing = { active: false, section: null, index: null };
-    document.getElementById('editModeStatus').style.display = 'none';
-    document.getElementById('cancelEditBtn').style.display = 'none';
-    document.getElementById('addContentBtn').innerHTML = '➕ Aggiungi / Aggiorna';
-    document.getElementById('targetSection').disabled = false;
-    document.getElementById('newTitle').value = '';
-    document.getElementById('newText').value = '';
-    document.getElementById('newKicker').value = '';
-    document.getElementById('kickerSelect').value = '';
-    document.getElementById('newByline').value = '';
-    document.getElementById('newImage').value = '';
-    document.getElementById('imageFloat').value = 'none';
-    document.getElementById('imagePosition').value = 'top';
-    document.getElementById('imageCaption').value = '';
-    document.getElementById('imageStyle').value = 'normal';
-    document.getElementById('coloredBg').checked = false;
-    document.getElementById('fwTitleSize').value = '3rem';
-    document.getElementById('fwTitleAlign').value = 'center';
-    document.getElementById('fwTextAlign').value = 'justify';
-    document.getElementById('fwColumns').value = '2';
-    toggleExtraSections();
+  function endEdit() {
+    editing = null;
+    $('editStatus').hidden = true;
+    $('cancelEditBtn').hidden = true;
+    [...$('targetSection').options].forEach(o => { o.disabled = false; });
+    clearForm();
+    refreshFormVisibility();
   }
 
   function addOrUpdate() {
-    const section = document.getElementById('targetSection').value;
-    const title = document.getElementById('newTitle').value;
-    let text = document.getElementById('newText').value;
-    let kicker = document.getElementById('newKicker').value;
-    const ks = document.getElementById('kickerSelect').value;
-    if (ks && !kicker) kicker = ks;
-    const byline = document.getElementById('newByline').value;
-    const image = document.getElementById('newImage').value;
-    const imageFloat = document.getElementById('imageFloat').value;
-    const imagePosition = document.getElementById('imagePosition').value;
-    const imageCaption = document.getElementById('imageCaption').value;
-    const imageStyle = document.getElementById('imageStyle').value;
-    const colored = document.getElementById('coloredBg').checked;
-    const fwTitleSize = document.getElementById('fwTitleSize').value;
-    const fwTitleAlign = document.getElementById('fwTitleAlign').value;
-    const fwTextAlign = document.getElementById('fwTextAlign').value;
-    const fwColumns = document.getElementById('fwColumns').value;
-
-    if (!text && section !== 'straight' && section !== 'fakeAd' && section !== 'nextIssue' && section !== 'rubric') {
-      alert("Inserisci almeno il testo.");
+    const f = readForm();
+    if (!f.text.trim() && !f.item.image && !['straight', 'fakeAd', 'nextIssue', 'rubric'].includes(f.loc)) {
+      alert('Scrivi almeno il testo, o aggiungi un\'immagine.');
+      $('newText').focus();
       return;
     }
+    applyForm(content, f, editing);
+    endEdit();
+    commit();
+  }
 
-    if (editing.active) {
-      if (section === 'fullWidth') {
-        newspaperData.fullWidth = { type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle, fwTitleSize, fwTitleAlign, fwTextAlign, fwColumns };
-      } else if (section === 'colLeft' || section === 'colRight') {
-        newspaperData[section][editing.index] = { type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle };
-      } else if (section === 'straight') {
-        newspaperData.straightFromTheMan.text = text;
-      } else if (section === 'fakeAd') {
-        newspaperData.fakeAd.text = text;
-        newspaperData.fakeAd.enabled = true;
-        newspaperData.fakeAd.colored = colored;
-      } else if (section === 'roundup') {
-        newspaperData.roundup[editing.index] = { text: text };
-      } else if (section === 'letters') {
-        newspaperData.letters[editing.index] = { text: text };
-      } else if (section === 'fight') {
-        newspaperData.fight[editing.index] = { text: text };
-      } else if (section === 'nextIssue') {
-        newspaperData.nextIssue = text;
-      } else if (section === 'rubric') {
-        newspaperData.fixedRubric = text;
-      }
-      cancelEdit();
-      saveAndRender();
-      return;
+  // ---------- immagini ----------
+
+  function showImageState() {
+    const local = !$('newImage').value.trim() && formImage.image;
+    $('imageThumbBox').hidden = !local;
+    if (local) {
+      $('imageThumb').src = formImage.image;
+      $('imageInfo').textContent = formImage.imageBaked ? 'Retinata sui pixel, pronta per la fotocopia.' : 'Caricata, senza metadati.';
     }
-
-    switch(section) {
-      case 'fullWidth':
-        newspaperData.fullWidth = { type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle, fwTitleSize, fwTitleAlign, fwTextAlign, fwColumns };
-        break;
-      case 'colLeft':
-        newspaperData.colLeft.push({ type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle });
-        break;
-      case 'colRight':
-        newspaperData.colRight.push({ type:'article', title, text, kicker, byline, image, imageFloat, imagePosition, imageCaption, imageStyle });
-        break;
-      case 'straight':
-        newspaperData.straightFromTheMan.text = text;
-        break;
-      case 'roundup':
-        newspaperData.roundup.push({ text: text });
-        break;
-      case 'letters':
-        newspaperData.letters.push({ text: text });
-        break;
-      case 'fight':
-        newspaperData.fight.push({ text: text });
-        break;
-      case 'fakeAd':
-        newspaperData.fakeAd = { text: text, enabled: true, colored: colored };
-        break;
-      case 'nextIssue':
-        newspaperData.nextIssue = text;
-        break;
-      case 'rubric':
-        newspaperData.fixedRubric = text;
-        break;
-    }
-    cancelEdit();
-    saveAndRender();
+    $('externalWarn').hidden = !/^https?:\/\//i.test($('newImage').value.trim());
   }
 
-  function resetAll() {
-    if (confirm("Resettare TUTTI i contenuti?")) {
-      initExampleData();
-      document.getElementById('anno').value = "I";
-      document.getElementById('numero').value = "0";
-      document.getElementById('data').value = getCurrentItalianDate();
-      document.getElementById('titleColor').value = "#8b1f1f";
-      cancelEdit();
-      saveAndRender();
-    }
+  let imageBusy = false;
+  function setBusy(on, msg) {
+    imageBusy = on;
+    $('addContentBtn').disabled = on;
+    $('imageStyle').disabled = on;
+    if (msg) $('imageInfo').textContent = msg;
+    if (on) $('imageThumbBox').hidden = false;
   }
 
-  // Incorpora il logo come data URI, ridimensionato: l'originale pesa ~2 MB e
-  // nell'intestazione è alto 60px. Senza questo passaggio il file esportato
-  // conserva un percorso relativo e, aperto fuori dalla cartella del sito,
-  // perde la testata senza segnalare nulla.
-  async function logoDataUri(altezzaPx = 120) {
-    try {
-      const img = await new Promise((risolvi, rifiuta) => {
-        const i = new Image();
-        i.onload = () => risolvi(i);
-        i.onerror = () => rifiuta(new Error('logo non disponibile'));
-        i.src = 'UO LOGO.png';
-      });
-      const scala = altezzaPx / img.naturalHeight;
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.naturalWidth * scala);
-      canvas.height = altezzaPx;
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL('image/png');
-    } catch (e) {
-      return null; // il markup ha già onerror: senza logo il resto della pagina regge
-    }
-  }
-
-  async function conLogoIncorporato(html) {
-    const logo = await logoDataUri();
-    return logo ? html.replace('src="UO LOGO.png"', `src="${logo}"`) : html;
-  }
-
-  async function exportHTML() {
-    const cleanHTML = await conLogoIncorporato(renderNewspaper(true));
-    const css = document.getElementById('newspaper-css').innerHTML;
-    const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>La Mia Ezine</title><style>${css}</style></head><body><div class="newspaper">${cleanHTML}</div></body></html>`], {type:'text/html'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'underground_observer.html';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  async function printPDF() {
-    const cleanHTML = await conLogoIncorporato(renderNewspaper(true));
-    const w = window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stampa</title><style>${document.getElementById('newspaper-css').innerHTML}</style><style>body{margin:0;padding:1rem;background:white;}</style></head><body><div class="newspaper">${cleanHTML}</div></body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
-  }
-
-  async function saveNewIssue() {
-    let title = document.getElementById('issueTitle').value.trim();
-    if (!title) title = `Uscita del ${new Date().toLocaleString()}`;
-    const newspaperContent = getCurrentNewspaperData();
-    // 'data' = data di testata in formato italiano, è quella mostrata dall'archivio.
-    // La colonna 'date' (ISO) la assegna il server, vedi save_issue.php.
-    const payload = { title: title, data: document.getElementById('data').value, content: newspaperContent };
-    try {
-      const res = await fetch('save_issue.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const result = await res.json();
-      if (result.success) { alert(`Uscita salvata con ID ${result.id}`); document.getElementById('issueTitle').value = ''; }
-      else alert('Errore: ' + (result.error || 'Errore sconosciuto'));
-    } catch(e) { alert('Errore di connessione al server: ' + e.message); }
-  }
-
-  async function updateCurrentIssue() {
-    if (!currentIssueId) return;
-    const title = document.getElementById('issueTitle').value.trim() || `Uscita aggiornata`;
-    const newspaperContent = getCurrentNewspaperData();
-    const payload = { id: currentIssueId, title: title, data: document.getElementById('data').value, content: newspaperContent };
-    try {
-      const res = await fetch('update_issue.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const result = await res.json();
-      if (result.success) { alert('Uscita aggiornata con successo'); currentIssueId = null; document.getElementById('updateIssueBtn').style.display = 'none'; document.getElementById('issueTitle').value = ''; }
-      else alert('Errore: ' + result.error);
-    } catch(e) { alert('Errore di connessione: ' + e.message); }
-  }
-
-  async function loadIssueFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const editId = urlParams.get('edit');
-    if (editId) {
-      try {
-        const res = await fetch(`load_issue.php?id=${editId}`);
-        const data = await res.json();
-        if (data.content) {
-          newspaperData = contenutoCompleto(data.content);
-          document.getElementById('anno').value = newspaperData.header.anno;
-          document.getElementById('numero').value = newspaperData.header.numero;
-          document.getElementById('data').value = newspaperData.header.data;
-          document.getElementById('titleColor').value = newspaperData.header.titleColor;
-          document.getElementById('issueTitle').value = data.title || '';
-          currentIssueId = data.id;
-          document.getElementById('updateIssueBtn').style.display = 'inline-block';
-          renderNewspaper(false);
-          alert(`Uscita "${data.title}" caricata. Puoi modificarla e poi aggiornarla.`);
-        } else alert('Uscita non trovata');
-      } catch(e) { alert('Errore nel caricamento: ' + e.message); }
-    }
-  }
-
-  function getCurrentNewspaperData() {
-    newspaperData.header.anno = document.getElementById('anno').value;
-    newspaperData.header.numero = document.getElementById('numero').value;
-    newspaperData.header.data = document.getElementById('data').value;
-    newspaperData.header.titleColor = document.getElementById('titleColor').value;
-    return JSON.parse(JSON.stringify(newspaperData));
-  }
-
-  document.getElementById('addContentBtn').onclick = addOrUpdate;
-  document.getElementById('cancelEditBtn').onclick = cancelEdit;
-  document.getElementById('resetAllBtn').onclick = resetAll;
-  document.getElementById('exportBtn').onclick = exportHTML;
-  document.getElementById('printBtn').onclick = printPDF;
-  document.getElementById('saveIssueBtn').onclick = saveNewIssue;
-  document.getElementById('updateIssueBtn').onclick = updateCurrentIssue;
-  document.getElementById('archiveBtn').onclick = () => { window.location.href = 'archivio.php'; };
-  document.getElementById('targetSection').addEventListener('change', toggleExtraSections);
-  ['anno','numero','data','titleColor'].forEach(id => document.getElementById(id).addEventListener('input', () => saveAndRender()));
-
-  function loadFromStorage() {
-    const saved = localStorage.getItem('undergroundObserver');
-    if (saved) {
-      try {
-        const p = JSON.parse(saved);
-        newspaperData = contenutoCompleto(p);
-        document.getElementById('anno').value = newspaperData.header.anno;
-        document.getElementById('numero').value = newspaperData.header.numero;
-        document.getElementById('data').value = newspaperData.header.data || getCurrentItalianDate();
-        document.getElementById('titleColor').value = newspaperData.header.titleColor || "#8b1f1f";
-      } catch(e) {}
+  async function applyImageStyle() {
+    if (!formImage.imageOriginal) { renderPreview(); return; }
+    const style = $('imageStyle').value;
+    if (style === 'normal') {
+      formImage.image = formImage.imageOriginal; formImage.imageBaked = false;
     } else {
-      initExampleData();
-      document.getElementById('data').value = getCurrentItalianDate();
+      setBusy(true, 'Retinatura in corso…');
+      try {
+        const up = await EzineImages.upload(await EzineImages.stylize(formImage.imageOriginal, style), style);
+        formImage.image = up.url; formImage.imageBaked = true;
+      } catch (e) {
+        alert('Retinatura non riuscita: ' + e.message);
+        $('imageStyle').value = 'normal';
+        formImage.image = formImage.imageOriginal; formImage.imageBaked = false;
+      } finally { setBusy(false); }
     }
-    newspaperData.header.data = document.getElementById('data').value;
-    renderNewspaper(false);
+    showImageState();
+    renderPreview();
   }
 
-  loadFromStorage();
-  loadIssueFromUrl();
-  toggleExtraSections();
+  async function onImageFile(file) {
+    if (!file) return;
+    $('newImage').value = '';
+    setBusy(true, 'Preparo l\'immagine…');
+    try {
+      const up = await EzineImages.upload(await EzineImages.prepare(file));
+      formImage = { image: up.url, imageOriginal: up.url, imageBaked: false };
+      setBusy(false);
+      await applyImageStyle();
+    } catch (e) {
+      setBusy(false);
+      alert('Caricamento non riuscito: ' + e.message);
+      $('imageFile').value = '';
+      showImageState();
+    }
+  }
+
+  // ---------- anteprima ----------
+
+  function previewContent() {
+    const f = readForm();
+    if (!editing && formIsEmpty(f)) return { d: content, ghost: null };
+    const d = Ezine.clone(content);
+    const ghost = applyForm(d, f, editing);
+    return { d, ghost };
+  }
+
+  function renderPreview() {
+    const { d, ghost } = previewContent();
+    $('newspaperPreview').innerHTML = Ezine.render(d, mh, { editable: true, ghost, bw: $('bwMode').checked });
+    fitPreview();
+    checkPages(d);
+  }
+  const renderPreviewSoon = debounce(renderPreview, 120);
+
+  // L'anteprima è a dimensione A4 reale: la si riduce per farla stare nel pannello.
+  function fitPreview() {
+    const pane = $('previewPane'), el = $('newspaperPreview'), box = $('previewScaler');
+    const w = el.offsetWidth;
+    const k = Math.min(1, (pane.clientWidth - 24) / w);
+    el.style.transform = `scale(${k})`;
+    box.style.width = (w * k) + 'px';
+    box.style.height = (el.offsetHeight * k) + 'px';
+  }
+
+  // La misura si fa su una copia senza pulsanti di modifica, nascosta: è quella
+  // che finisce davvero sulla carta. I segnali vanno poi sulle pagine visibili.
+  function checkPages(d) {
+    const shown = [...$('newspaperPreview').querySelectorAll('.page')];
+    let box = $('measureBox');
+    if (!box) { box = document.createElement('div'); box.id = 'measureBox'; document.body.appendChild(box); }
+    box.innerHTML = Ezine.render(d, mh, { bw: $('bwMode').checked });
+    const fit = Ezine.measureOverflow(box.querySelector('.newspaper'));
+    box.innerHTML = '';
+    const list = $('fitList');
+    list.innerHTML = '';
+    for (const p of fit) {
+      const over = p.ratio > 1.005;
+      p.el = shown[p.page - 1];
+      if (!p.el) continue;
+      p.el.classList.toggle('ez-overflow', over);
+      const li = document.createElement('li');
+      li.className = over ? 'over' : 'ok';
+      li.textContent = over
+        ? `Pagina ${p.page}: supera l'A4 del ${Math.round((p.ratio - 1) * 100)}% – in stampa continua su un altro foglio, nel libretto viene tagliata`
+        : `Pagina ${p.page}: sta nell'A4 (${Math.round(p.ratio * 100)}% dello spazio)`;
+      list.appendChild(li);
+    }
+    const n = fit.length, padded = Ezine.bookletOrder(n).n;
+    const sheets = padded / 4, blank = padded - n;
+    const pagine = n === 1 ? '1 pagina' : `${n} pagine`;
+    const bianche = blank === 0 ? '' : blank === 1 ? ' + 1 bianca' : ` + ${blank} bianche`;
+    const fogli = sheets === 1 ? '1 foglio' : `${sheets} fogli`;
+    $('bookletInfo').textContent = `Libretto: ${pagine}${bianche} su ${fogli} A4 fronte/retro.`;
+  }
+
+  // ---------- azioni dentro l'anteprima ----------
+
+  function onPreviewAction(act, loc, index) {
+    const list = listOf(content, loc);
+    switch (act) {
+      case 'edit': loadForEdit(loc, index); return;
+      case 'delete':
+        if (loc === 'fullWidth') content.fullWidth = null;
+        else if (loc === 'nextIssue') content.nextIssue = '';
+        else if (loc === 'rubric') content.fixedRubric = '';
+        else if (list) list.splice(index, 1);
+        break;
+      case 'up': if (list && index > 0) [list[index - 1], list[index]] = [list[index], list[index - 1]]; break;
+      case 'down': if (list && index < list.length - 1) [list[index + 1], list[index]] = [list[index], list[index + 1]]; break;
+      case 'hide': content.fakeAd.enabled = false; break;
+      case 'enable':
+        content.fakeAd.enabled = true;
+        if (!content.fakeAd.text) content.fakeAd.text = '⚠️ CONSIGLIO: difendete i vostri occhi dalla TV di qualità';
+        break;
+      case 'reset': content.straightFromTheMan.text = DEFAULT_STRAIGHT; break;
+      case 'add': case 'addFw':
+        endEdit();
+        $('targetSection').value = loc;
+        refreshFormVisibility();
+        (act === 'addFw' ? $('newTitle') : $('newText')).focus();
+        return;
+    }
+    if (editing) endEdit();
+    commit();
+  }
+
+  function setupPreviewEvents() {
+    const pv = $('newspaperPreview');
+    pv.addEventListener('click', e => {
+      const b = e.target.closest('.ez-btn');
+      if (!b) return;
+      onPreviewAction(b.dataset.act, b.dataset.loc, b.dataset.index === undefined ? null : Number(b.dataset.index));
+    });
+
+    // trascinamento degli articoli, anche fra colonne e pagine diverse
+    let drag = null;
+    const clearMarks = () => pv.querySelectorAll('.drop-before, .drag-over, .dragging').forEach(el => el.classList.remove('drop-before', 'drag-over', 'dragging'));
+    pv.addEventListener('dragstart', e => {
+      const a = e.target.closest && e.target.closest('article[draggable="true"]');
+      if (!a) return;
+      drag = { loc: a.dataset.loc, index: Number(a.dataset.index) };
+      a.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', '');
+    });
+    pv.addEventListener('dragover', e => {
+      if (!drag) return;
+      const zone = e.target.closest('.ez-drop');
+      if (!zone || !isArticleLoc(zone.dataset.loc)) return;
+      e.preventDefault();
+      pv.querySelectorAll('.drop-before, .drag-over').forEach(el => el.classList.remove('drop-before', 'drag-over'));
+      const a = e.target.closest('article[data-index]');
+      if (a && a.dataset.loc === zone.dataset.loc) a.classList.add('drop-before'); else zone.classList.add('drag-over');
+    });
+    pv.addEventListener('drop', e => {
+      if (!drag) return;
+      const zone = e.target.closest('.ez-drop');
+      if (!zone || !isArticleLoc(zone.dataset.loc)) return;
+      e.preventDefault();
+      const to = zone.dataset.loc;
+      const a = e.target.closest('article[data-index]');
+      const from = listOf(content, drag.loc), dest = listOf(content, to);
+      let at = a && a.dataset.loc === to ? Number(a.dataset.index) : dest.length;
+      const [moved] = from.splice(drag.index, 1);
+      if (from === dest && drag.index < at) at--;
+      dest.splice(at, 0, moved);
+      drag = null;
+      if (editing) endEdit();
+      commit();
+    });
+    pv.addEventListener('dragend', () => { drag = null; clearMarks(); });
+  }
+
+  // ---------- pagine interne ----------
+
+  function renderPagesList() {
+    const box = $('pagesList');
+    box.innerHTML = '';
+    content.pages.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'page-row';
+      row.innerHTML = `<b>p.${i + 2}</b>
+        <input placeholder="Titolo (facoltativo)" aria-label="Titolo pagina ${i + 2}">
+        <select aria-label="Colonne pagina ${i + 2}"><option value="1">1 col.</option><option value="2">2 col.</option><option value="3">3 col.</option></select>
+        <span><button type="button" title="Sposta su" data-pa="up">⬆️</button><button type="button" title="Elimina" data-pa="del">🗑️</button></span>`;
+      const [title, cols] = [row.querySelector('input'), row.querySelector('select')];
+      title.value = p.title; cols.value = String(p.columns);
+      title.addEventListener('input', () => { p.title = title.value; commit({ keepTargets: true }); });
+      cols.addEventListener('change', () => { p.columns = Number(cols.value); commit(); });
+      row.querySelector('[data-pa="up"]').disabled = i === 0;
+      row.addEventListener('click', e => {
+        const b = e.target.closest('[data-pa]');
+        if (!b) return;
+        if (b.dataset.pa === 'up' && i > 0) [content.pages[i - 1], content.pages[i]] = [content.pages[i], content.pages[i - 1]];
+        if (b.dataset.pa === 'del') {
+          if (p.articles.length && !confirm(`La pagina ${i + 2} contiene ${p.articles.length} articol${p.articles.length === 1 ? 'o' : 'i'}. Eliminarla?`)) return;
+          content.pages.splice(i, 1);
+        }
+        if (editing) endEdit();
+        commit();
+      });
+      box.appendChild(row);
+    });
+  }
+
+  // ---------- stato, bozza e salvataggio ----------
+
+  function commit(opts = {}) {
+    dirty = true;
+    saveLocal();
+    saveDraftSoon();
+    if (!opts.keepTargets) { rebuildTargets(); renderPagesList(); }
+    else rebuildTargets();
+    refreshFormVisibility();
+    updateIssueUi();
+    renderPreview();
+  }
+
+  function draftPayload() {
+    return { content, issue, dirty, title: $('issueTitle').value, savedAt: new Date().toISOString() };
+  }
+
+  function saveLocal() {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(draftPayload())); }
+    catch (e) { /* spazio esaurito o accesso negato: resta la bozza sul server */ }
+  }
+
+  let lastServerSave = null, pendingDraft = false;
+  async function saveDraftNow() {
+    pendingDraft = false;
+    try {
+      await postJson('api/draft.php', { payload: draftPayload() });
+      lastServerSave = new Date();
+      setDraftStatus();
+    } catch (e) {
+      $('draftStatus').className = 'status warn';
+      $('draftStatus').textContent = `⚠️ Bozza non salvata sul server (${e.message}): resta solo in questo browser.`;
+    }
+  }
+  const saveDraftDebounced = debounce(saveDraftNow, 1500);
+  function saveDraftSoon() { pendingDraft = true; saveDraftDebounced(); }
+
+  function setDraftStatus() {
+    $('draftStatus').className = 'status';
+    $('draftStatus').textContent = lastServerSave
+      ? `Bozza salvata sul server alle ${timeIt(lastServerSave)}${dirty ? ' · modifiche non ancora archiviate' : ''}`
+      : 'Bozza di lavoro';
+  }
+
+  function updateIssueUi() {
+    const linked = issue.id != null;
+    $('updateIssueBtn').hidden = !linked;
+    $('updateIssueBtn').textContent = `🔄 Aggiorna uscita #${issue.id}`;
+    $('issueStatus').textContent = linked
+      ? `Collegata all'uscita #${issue.id}${dirty ? ' · ci sono modifiche da archiviare' : ' · archiviata'}`
+      : 'Bozza non ancora archiviata';
+    setDraftStatus();
+  }
+
+  function readLocalDraft() {
+    try {
+      const v = JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null');
+      if (v && v.content) return v;
+      // Versioni precedenti salvavano direttamente il contenuto, con un'altra
+      // chiave: lo si riconosce dalla struttura. La chiave NON viene rimossa qui,
+      // ma solo dopo che la bozza è stata messa al sicuro (vedi boot).
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k === LOCAL_KEY) continue;
+        try {
+          const old = JSON.parse(localStorage.getItem(k));
+          if (old && old.header && Array.isArray(old.colLeft)) {
+            return { content: old, issue: { id: null, updatedAt: null }, dirty: true, savedAt: '1970-01-01T00:00:00Z', legacyKey: k };
+          }
+        } catch (e) { /* chiave estranea */ }
+      }
+    } catch (e) { /* localStorage non disponibile */ }
+    return null;
+  }
+
+  function applyDraft(p) {
+    content = Ezine.normalize(p.content);
+    issue = Object.assign({ id: null, updatedAt: null }, p.issue || {});
+    dirty = !!p.dirty;
+    $('issueTitle').value = p.title || '';
+  }
+
+  function fillHeaderFields() {
+    $('anno').value = content.header.anno;
+    $('numero').value = content.header.numero;
+    $('data').value = content.header.data;
+    $('titleColor').value = content.header.titleColor || '#8b1f1f';
+  }
+
+  function withMasthead(d) {
+    const c = Ezine.clone(d);
+    c.masthead = Ezine.clone(mh);   // l'uscita archiviata conserva la sua testata
+    return c;
+  }
+
+  async function saveNew() {
+    const title = $('issueTitle').value.trim() || `Uscita del ${new Date().toLocaleString('it-IT')}`;
+    try {
+      const r = await postJson('api/save_issue.php', { title, data: content.header.data, content: withMasthead(content) });
+      issue = { id: r.id, updatedAt: r.updated_at };
+      $('issueTitle').value = title;
+      dirty = false;
+      saveLocal(); saveDraftNow(); updateIssueUi();
+      alert(`Uscita salvata nell'archivio con il numero #${r.id}. Le prossime modifiche si archiviano con “Aggiorna”.`);
+    } catch (e) { alert('Salvataggio non riuscito: ' + e.message); }
+  }
+
+  async function updateIssue(force = false) {
+    if (issue.id == null) return;
+    try {
+      const r = await postJson('api/update_issue.php', {
+        id: issue.id, title: $('issueTitle').value.trim(), data: content.header.data,
+        content: withMasthead(content), expected_updated_at: issue.updatedAt, force
+      });
+      issue.updatedAt = r.updated_at;
+      dirty = false;
+      saveLocal(); saveDraftNow(); updateIssueUi();
+      alert(`Uscita #${issue.id} aggiornata. La versione precedente è nella cronologia dell'archivio.`);
+    } catch (e) {
+      if (e.status === 409) {
+        if (confirm('Questa uscita è stata salvata da un\'altra finestra dopo che l\'hai aperta.\n\nSovrascriverla con la versione che hai qui? (Quella attuale resterà comunque nella cronologia.)')) updateIssue(true);
+      } else if (e.status === 404) {
+        alert('L\'uscita non esiste più nell\'archivio. Usa “Salva come nuova uscita”.');
+        issue = { id: null, updatedAt: null }; updateIssueUi();
+      } else alert('Aggiornamento non riuscito: ' + e.message);
+    }
+  }
+
+  function nextNumberFrom(d) {
+    const c = Ezine.clone(d);
+    const n = parseInt(c.header.numero, 10);
+    if (!Number.isNaN(n)) c.header.numero = String(n + 1);
+    c.header.data = todayIt();
+    delete c.masthead;
+    return c;
+  }
+
+  function startNextIssue() {
+    if (dirty && issue.id != null && !confirm('Ci sono modifiche non archiviate nell\'uscita corrente. Iniziare comunque il numero successivo?')) return;
+    content = Ezine.normalize(nextNumberFrom(content));
+    issue = { id: null, updatedAt: null };
+    $('issueTitle').value = '';
+    endEdit(); fillHeaderFields();
+    commit();
+  }
+
+  // Apre un'uscita dell'archivio, per modificarla o come base del numero successivo.
+  async function openFromArchive(id, mode) {
+    if (dirty && issue.id !== id && !confirm('La bozza in corso ha modifiche non archiviate e verrà sostituita. Continuare?')) return;
+    try {
+      const r = await api(`api/load_issue.php?id=${id}`);
+      if (mode === 'duplicate') {
+        content = Ezine.normalize(nextNumberFrom(r.content));
+        issue = { id: null, updatedAt: null };
+        $('issueTitle').value = '';
+        dirty = true;
+      } else {
+        const c = Ezine.clone(r.content); delete c.masthead;
+        content = Ezine.normalize(c);
+        issue = { id: r.id, updatedAt: r.updated_at };
+        $('issueTitle').value = r.title || '';
+        dirty = false;
+      }
+      endEdit(); fillHeaderFields();
+      saveLocal(); saveDraftNow();
+      rebuildTargets(); renderPagesList(); updateIssueUi(); renderPreview();
+    } catch (e) { alert('Impossibile aprire l\'uscita: ' + e.message); }
+  }
+
+  // ---------- impostazioni della testata ----------
+
+  function fillSettings() {
+    document.querySelectorAll('[data-mh]').forEach(el => { el.value = mh[el.dataset.mh] || ''; });
+    document.querySelectorAll('[data-mh-section]').forEach(el => { el.value = mh.sections[el.dataset.mhSection] || ''; });
+  }
+  function applyIdentity() {
+    document.title = `${mh.fullName} – Editor`;
+    $('appTitle').textContent = `🖋️ Editor – ${mh.fullName}`;
+    Ezine.favicon(mh.nameA || mh.fullName, content ? content.header.titleColor : '#8b1f1f');
+  }
+  const saveSettingsSoon = debounce(async () => {
+    try {
+      await postJson('api/settings.php', { masthead: mh });
+      $('settingsStatus').textContent = `Impostazioni salvate alle ${timeIt()}.`;
+    } catch (e) { $('settingsStatus').textContent = '⚠️ Impostazioni non salvate: ' + e.message; }
+  }, 800);
+  function onSettingsChange() {
+    applyIdentity(); renderPreviewSoon(); saveSettingsSoon();
+  }
+
+  // ---------- stampa ed esportazione ----------
+
+  function fileBase() {
+    const raw = `${mh.exportName || 'ezine'}-anno-${content.header.anno}-n${content.header.numero}`;
+    return raw.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9-]+/g, '_').replace(/_+/g, '_');
+  }
+
+  async function openPrint(mode) {
+    // la finestra va aperta subito, dentro il clic, o il browser la blocca
+    const w = window.open('', '_blank');
+    if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i pop-up per questo sito.'); return; }
+    w.document.write('<p style="font:16px sans-serif;padding:2rem">Preparazione della stampa…</p>');
+    try {
+      const html = await Ezine.printDocument(content, mh, { mode, bw: $('bwMode').checked, title: `${mh.fullName} – Anno ${content.header.anno} N. ${content.header.numero}` });
+      w.document.open(); w.document.write(html); w.document.close();
+    } catch (e) { w.close(); alert('Stampa non riuscita: ' + e.message); }
+  }
+
+  async function exportHtml() {
+    try {
+      const html = await Ezine.exportDocument(content, mh, { bw: $('bwMode').checked, title: `${mh.fullName} – Anno ${content.header.anno} N. ${content.header.numero}` });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      a.download = fileBase() + '.html';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (e) { alert('Esportazione non riuscita: ' + e.message); }
+  }
+
+  // ---------- Markdown ----------
+
+  function mdAction(kind) {
+    const ta = $('newText');
+    const [s, e] = [ta.selectionStart, ta.selectionEnd];
+    const sel = ta.value.slice(s, e);
+    let ins, caret;
+    if (kind === 'bold') { ins = `**${sel || 'grassetto'}**`; caret = sel ? s + ins.length : s + 2; }
+    else if (kind === 'italic') { ins = `*${sel || 'corsivo'}*`; caret = sel ? s + ins.length : s + 1; }
+    else if (kind === 'link') {
+      const url = prompt('Indirizzo del link (https://…):', 'https://');
+      if (!url || !/^(https?:\/\/|mailto:)/i.test(url)) return;
+      ins = `[${sel || 'testo del link'}](${url})`; caret = s + ins.length;
+    } else { ins = '\n\n'; caret = s + 2; }
+    ta.setRangeText(ins, s, e, 'end');
+    if (!sel && kind !== 'para' && kind !== 'link') ta.setSelectionRange(caret, caret + (kind === 'bold' ? 9 : 7));
+    ta.focus();
+    renderPreviewSoon();
+  }
+
+  // ---------- avvio ----------
+
+  function bindUi() {
+    for (const id of ['anno', 'numero', 'data']) $(id).addEventListener('input', () => { content.header[id] = $(id).value; commit({ keepTargets: true }); });
+    $('titleColor').addEventListener('input', () => { content.header.titleColor = $('titleColor').value; applyIdentity(); commit({ keepTargets: true }); });
+
+    $('targetSection').addEventListener('change', () => { refreshFormVisibility(); renderPreview(); });
+    const formFields = ['newTitle', 'newText', 'newKicker', 'kickerSelect', 'newByline', 'imageFloat', 'imagePosition',
+                        'imageCaption', 'coloredBg', 'fwTitleSize', 'fwTitleAlign', 'fwTextAlign', 'fwColumns'];
+    for (const id of formFields) $(id).addEventListener('input', renderPreviewSoon);
+    $('newImage').addEventListener('input', () => { showImageState(); renderPreviewSoon(); });
+    $('imageFile').addEventListener('change', () => onImageFile($('imageFile').files[0]));
+    $('imageClear').addEventListener('click', () => {
+      formImage = { image: '', imageOriginal: '', imageBaked: false };
+      $('imageFile').value = ''; $('newImage').value = '';
+      showImageState(); renderPreview();
+    });
+    $('imageStyle').addEventListener('change', applyImageStyle);
+    document.querySelectorAll('[data-md]').forEach(b => b.addEventListener('click', () => mdAction(b.dataset.md)));
+
+    $('addContentBtn').addEventListener('click', addOrUpdate);
+    $('cancelEditBtn').addEventListener('click', () => { endEdit(); renderPreview(); });
+    $('addPageBtn').addEventListener('click', () => {
+      content.pages.push({ title: '', columns: 2, articles: [] });
+      commit();
+      $('targetSection').value = `page:${content.pages.length - 1}`;
+      refreshFormVisibility();
+    });
+
+    $('saveIssueBtn').addEventListener('click', saveNew);
+    $('updateIssueBtn').addEventListener('click', () => updateIssue(false));
+    $('nextIssueBtn').addEventListener('click', startNextIssue);
+    $('archiveBtn').addEventListener('click', () => { if (pendingDraft) saveDraftNow(); location.href = 'archivio.php'; });
+    $('issueTitle').addEventListener('input', () => { saveLocal(); saveDraftSoon(); });
+
+    $('bwMode').addEventListener('change', renderPreview);
+    $('printBtn').addEventListener('click', () => openPrint('normal'));
+    $('bookletBtn').addEventListener('click', () => openPrint('booklet'));
+    $('exportBtn').addEventListener('click', exportHtml);
+
+    document.querySelectorAll('[data-mh]').forEach(el => el.addEventListener('input', () => { mh[el.dataset.mh] = el.value; onSettingsChange(); }));
+    document.querySelectorAll('[data-mh-section]').forEach(el => el.addEventListener('input', () => { mh.sections[el.dataset.mhSection] = el.value; onSettingsChange(); }));
+    $('mhLogoFile').addEventListener('change', async () => {
+      const f = $('mhLogoFile').files[0];
+      if (!f) return;
+      try {
+        const up = await EzineImages.upload(await EzineImages.prepare(f, { maxSide: 600, png: true }), 'logo');
+        mh.logo = up.url; $('mhLogo').value = up.url; onSettingsChange();
+      } catch (e) { alert('Caricamento del logo non riuscito: ' + e.message); }
+      $('mhLogoFile').value = '';
+    });
+
+    $('resetAllBtn').addEventListener('click', () => {
+      if (!confirm('Sostituire il numero in lavorazione con il contenuto di esempio?')) return;
+      content = exampleContent();
+      issue = { id: null, updatedAt: null };
+      $('issueTitle').value = '';
+      endEdit(); fillHeaderFields(); commit();
+    });
+
+    setupPreviewEvents();
+    window.addEventListener('resize', debounce(fitPreview, 100));
+    // chiudendo la pagina, l'ultima bozza parte comunque verso il server
+    window.addEventListener('pagehide', () => {
+      if (!pendingDraft) return;
+      navigator.sendBeacon('api/draft.php', new Blob([JSON.stringify({ payload: draftPayload() })], { type: 'application/json' }));
+    });
+  }
+
+  async function boot() {
+    for (const [v, t] of Object.entries(EzineImages.STYLES)) $('imageStyle').add(new Option(t, v));
+    try { mh = Ezine.masthead((await api('api/settings.php')).masthead); } catch (e) { mh = Ezine.masthead(); }
+    fillSettings();
+
+    const local = readLocalDraft();
+    let server = null;
+    try { server = (await api('api/draft.php')).payload; } catch (e) { /* si lavora con la copia locale */ }
+    let chosen = [local, server].filter(Boolean).sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)))[0];
+    // Una bozza della versione precedente non ha data: non la si scarta in
+    // silenzio a favore di quella sul server, si chiede.
+    if (local && local.legacyKey) {
+      chosen = !server || confirm('In questo browser c\'è una bozza salvata dalla versione precedente dell\'editor.\n\nRecuperarla? (Annulla per tenere la bozza salvata sul server.)') ? local : server;
+    }
+    if (chosen) applyDraft(chosen); else content = exampleContent();
+    if (!content.header.data) content.header.data = todayIt();
+    // La bozza scelta va scritta subito ovunque, poi la vecchia chiave si può togliere.
+    saveLocal();
+    if (chosen && chosen !== server) await saveDraftNow();
+    if (local && local.legacyKey) { try { localStorage.removeItem(local.legacyKey); } catch (e) { /* irrilevante */ } }
+
+    fillHeaderFields();
+    applyIdentity();
+    bindUi();
+    rebuildTargets();
+    renderPagesList();
+    refreshFormVisibility();
+    updateIssueUi();
+    renderPreview();
+
+    const q = new URLSearchParams(location.search);
+    const id = Number(q.get('edit') || q.get('from'));
+    if (id > 0) {
+      history.replaceState(null, '', location.pathname);  // ricaricando non si riapre
+      await openFromArchive(id, q.get('from') ? 'duplicate' : 'edit');
+    }
+  }
+
+  boot();
+})();
 </script>
 </body>
 </html>

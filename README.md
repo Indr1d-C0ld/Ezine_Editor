@@ -1,8 +1,8 @@
 # 📰 Ezine Editor
 
-**Editor + archivio in stile giornale per una propria ezine personale** — componi numeri con testata, articoli su più colonne, immagini, rubriche fisse e anteprima live, e li archivi con ricerca nel testo, statistiche e stampa/esportazione.
+**Editor e archivio per una ezine personale in stile giornale** — componi numeri di più pagine con anteprima A4 reale, carica immagini ripulite dai metadati e retinate per la fotocopia, stampa a libretto, archivia con cronologia delle versioni e ricerca nel testo.
 
-Self-hosted, zero dipendenze: solo PHP + SQLite lato server, HTML/CSS/JS puro lato client. Nessun framework, nessun build step, nessun account esterno.
+Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato client. Nessun framework, nessun build step, nessun servizio esterno, nessun font o script caricato da altri siti.
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
@@ -11,76 +11,128 @@ Self-hosted, zero dipendenze: solo PHP + SQLite lato server, HTML/CSS/JS puro la
 ## Indice
 
 - [Caratteristiche](#caratteristiche)
-- [Architettura](#architettura)
 - [Requisiti](#requisiti)
 - [Installazione](#installazione)
 - [Uso](#uso)
+- [Immagini e privacy](#immagini-e-privacy)
+- [Stampa e fotocopia](#stampa-e-fotocopia)
+- [Archivio, versioni e backup](#archivio-versioni-e-backup)
 - [Sicurezza](#sicurezza)
-- [Personalizzazione](#personalizzazione)
+- [Architettura](#architettura)
 - [Licenza](#licenza)
 
 ## Caratteristiche
 
-- Editor visuale con anteprima live: articolo full-width, due colonne (sinistra/destra), immagini con float e stili (mezzatinta/bitmap), rubriche fisse, finto annuncio, box "prossimo numero"
-- Esportazione in un singolo file HTML (CSS e immagini degli articoli incorporati) e stampa/PDF diretta dal browser
-- Archivio con ricerca nel testo degli articoli e per titolo, statistiche per numero (caratteri, parole, dimensione) e nuvola delle parole più frequenti dell'archivio
-- Persistenza automatica in `localStorage` mentre lavori, oltre al salvataggio esplicito nell'archivio
+**Composizione**
+- Anteprima a dimensione A4 reale: il testo va a capo esattamente come sulla carta, e l'editor segnala le pagine che eccedono il foglio, con la percentuale
+- Prima pagina classica (articolo a tutta larghezza, due colonne, riquadro, tre colonne di brevi, consiglio, piè di pagina) più **pagine interne** a 1–3 colonne, con il testo che scorre da una colonna all'altra
+- L'anteprima mostra ciò che stai scrivendo mentre lo scrivi, tratteggiato finché non lo aggiungi
+- Articoli spostabili trascinandoli, anche fra colonne e pagine diverse
+- Testo in **Markdown essenziale** (`**grassetto**`, `*corsivo*`, `[link](https://…)`, riga vuota = nuovo paragrafo), con barra dei comandi
+- Testata configurabile dall'interfaccia: nome a due colori, motto, sottotitolo, contatto, prezzo, nota a piè di pagina, logo, titoli delle sezioni
 
-## Architettura
+**Immagini**
+- Caricamento dal computer, con **rimozione di tutti i metadati** (EXIF, posizione GPS, modello del dispositivo)
+- Tre retinature applicate ai pixel — mezzatinta, bitmap a diffusione dell'errore, xilografia a tratteggio — che restano identiche in fotocopia
 
-| File | Ruolo |
-|---|---|
-| `index.html` | Editor: pannello di controllo a sinistra, anteprima del giornale a destra |
-| `archivio.php` | Elenco/ricerca dei numeri salvati, visualizza/stampa/elimina |
-| `save_issue.php` / `update_issue.php` / `load_issue.php` / `delete_issue.php` / `stats.php` | Endpoint JSON per il CRUD sul database |
-| `search_issues.php` | Ricerca lato server nel testo degli articoli |
-| `setup_db.php` | Crea il database SQLite e la tabella `issues` (idempotente) |
+**Stampa ed esportazione**
+- Stampa A4, oppure **a libretto A5** con le pagine già nell'ordine giusto per piegare e pinzare
+- Modalità bianco e nero ad alto contrasto, pensata per la fotocopiatrice
+- Esportazione in un unico file HTML autonomo, con stile, logo e immagini caricate incorporati
 
-Tutto il contenuto di un numero (articoli, testi, immagini in base64, impostazioni) è serializzato come JSON in un'unica colonna `content` — nessuna migrazione di schema da gestire quando aggiungi campi.
+**Archivio**
+- Ricerca nel testo degli articoli (lato server), statistiche reali per uscita, nuvola delle parole più frequenti
+- **Cronologia delle versioni**: ogni aggiornamento conserva la versione precedente, ripristinabile
+- "Nuovo numero da questo": duplica un'uscita incrementando il numero
+- Bozza di lavoro salvata sul server, non solo nel browser
+- Protezione dai conflitti: se un'uscita viene salvata da un'altra finestra, l'editor chiede prima di sovrascrivere
+- Backup completo in un .zip e ripristino non distruttivo; pulizia delle immagini non più usate
 
 ## Requisiti
 
-- Apache 2.4 con `mod_rewrite`/`mod_authn_file`/`mod_auth_basic` disponibili (per l'autenticazione opzionale, vedi sotto) e `AllowOverride All` sulla cartella
-- PHP 8+ con estensione `sqlite3` (`php -m | grep sqlite3`)
-- Nessun'altra dipendenza: niente Composer, niente npm
+- Apache 2.4 con `AllowOverride All` sulla cartella (servono gli `.htaccess` inclusi)
+- PHP 8.1+ con le estensioni `sqlite3`, `gd`, `fileinfo`, `mbstring` e `zip`:
+  ```bash
+  php -m | grep -E 'sqlite3|gd|fileinfo|mbstring|zip'
+  ```
+- Facoltativo, per l'autenticazione: `mod_authn_file`, `mod_auth_basic`, `mod_headers`
 
 ## Installazione
 
-1. Copia tutti i file in una sottocartella del document root (es. `/var/www/html/ezine/`).
-2. Rendi scrivibili la cartella e il futuro database dall'utente con cui gira Apache (es. `www-data`), altrimenti i salvataggi falliranno con *"attempt to write a readonly database"*:
+1. Copia tutti i file in una sottocartella del document root, ad esempio `/var/www/html/ezine/`.
+2. Rendi scrivibili dall'utente di Apache (es. `www-data`) la cartella principale e `uploads/`:
    ```bash
-   chmod 775 /percorso/ezine
+   chgrp www-data /var/www/html/ezine /var/www/html/ezine/uploads
+   chmod 775 /var/www/html/ezine
+   chmod 2775 /var/www/html/ezine/uploads
    ```
-3. Apri `setup_db.php` una volta dal browser per creare `ezine.db` e la tabella `issues`.
-4. (Consigliato) attiva l'autenticazione — vedi [Sicurezza](#sicurezza).
-5. Vai su `index.html`: sei pronto per comporre il primo numero.
+   Senza questo passaggio i salvataggi falliscono con *"attempt to write a readonly database"*.
+3. **Attiva l'autenticazione** — vedi [Sicurezza](#sicurezza). Senza, chiunque conosca l'indirizzo può leggere e modificare tutto.
+4. Apri `index.html`. Il database viene creato da solo alla prima richiesta, e si aggiorna da solo quando aggiorni il codice.
+5. Apri **⚙️ Impostazioni della testata** e dai un nome alla tua ezine.
 
 ## Uso
 
-- **Editor** (`index.html`): compila testata (anno, numero, data, colore), aggiungi articoli nelle varie sezioni, guarda l'anteprima aggiornarsi in tempo reale. "Salva nuova uscita" scrive nel database; se stai modificando un numero esistente (aperto dall'archivio) usa "Aggiorna" invece di creare un duplicato.
-- **Archivio** (`archivio.php`): cerca per titolo o nel testo degli articoli, consulta la nuvola delle parole più frequenti, visualizza/stampa/elimina ogni numero.
+**Editor** (`index.html`). Scegli una destinazione, scrivi, e l'anteprima ti mostra il risultato tratteggiato mentre digiti; "Aggiungi" lo inserisce. I pulsanti sugli elementi dell'anteprima servono per modificarli, eliminarli o spostarli; gli articoli si spostano anche trascinandoli. Le pagine interne si aggiungono dal pannello **📄 Pagine**.
 
-> **Nota sulla ricerca.** Cercare una parola chiave interroga il server (`search_issues.php`), che scorre il testo degli articoli — titoli, testi, occhielli, firme e didascalie — ignorando la struttura dati e le immagini: cercare `text` o `strong` non restituisce quindi ogni uscita. La nuvola applica lo stesso criterio per contare le parole, ma serve solo a dare un'idea dei temi ricorrenti: le parole non sono cliccabili per filtrare.
+"Salva come nuova uscita" archivia il numero e collega l'editor all'uscita: da lì in poi "Aggiorna" salva le modifiche senza creare doppioni. "Nuovo numero da questo" riparte dal numero corrente con il numero successivo.
+
+**Archivio** (`archivio.php`). Cerca per titolo o nel testo, apri un'uscita, modificala, duplicala, consulta la sua cronologia, stampala o eliminala. In fondo alla pagina ci sono backup, ripristino e pulizia delle immagini.
+
+Le uscite archiviate conservano la testata con cui sono state salvate: cambiare il nome o il motto in seguito non altera i numeri già usciti.
+
+## Immagini e privacy
+
+Le foto scattate col telefono contengono spesso la posizione esatta di scatto. L'editor le ripulisce due volte: il browser ridisegna l'immagine su un canvas prima di inviarla, e il server la ricodifica comunque con GD, eliminando anche il commento che GD stesso inserisce nei JPEG. I file salvati non contengono alcun metadato.
+
+È ancora possibile indicare l'indirizzo di un'immagine esterna, ma l'editor lo sconsiglia: chi apre il giornale contatta quel sito, che ne vede l'indirizzo IP, e se il file viene rimosso sparisce anche dal numero. Le immagini esterne restano link anche nel file esportato.
+
+Le retinature lavorano sui pixel, non con filtri CSS: per questo l'effetto sopravvive all'esportazione, alla stampa e alla fotocopia. L'originale ripulito viene conservato, così puoi cambiare stile in seguito.
+
+## Stampa e fotocopia
+
+**Stampa A4** produce un foglio per pagina. Se una pagina eccede l'A4, il pannello di stampa lo segnala: in stampa continua su un altro foglio.
+
+**Stampa a libretto A5** riduce ogni pagina in A5 e le dispone due per facciata nell'ordine per la rilegatura a punto metallico (con 8 pagine: [8|1] [2|7] [6|3] [4|5]), aggiungendo pagine bianche fino a un multiplo di quattro. Stampa fronte/retro con rilegatura sul **lato corto**, piega i fogli a metà tutti insieme e pinza al centro. Qui il contenuto che eccede la pagina viene tagliato: controlla prima le segnalazioni.
+
+**Bianco e nero ad alto contrasto** porta tutto a nero su bianco ed elimina i fondini, che in fotocopia diventano grigi sporchi.
+
+## Archivio, versioni e backup
+
+Ogni "Aggiorna" salva la versione che sta per essere sostituita: ne restano fino a 30 per uscita. Anche il ripristino di una versione salva prima quella attuale, quindi si può sempre tornare indietro.
+
+Il backup è un unico .zip con uscite, cronologia, impostazioni della testata, bozza e immagini. Il ripristino aggiunge senza cancellare: le uscite già presenti vengono saltate, quindi ripristinare due volte lo stesso file non crea doppioni. Le impostazioni della testata vengono sostituite solo se lo chiedi. Il file caricato viene trattato come non affidabile: si accettano solo nomi di file attesi e ogni immagine viene ricodificata come un normale caricamento.
 
 ## Sicurezza
 
-Di base l'app **non ha autenticazione**: chiunque conosca l'URL può leggere, modificare e cancellare l'archivio. Per uso non strettamente locale è fortemente consigliato attivare HTTP Basic Auth a livello di cartella — protegge automaticamente sia le pagine che gli endpoint, senza bisogno di scrivere codice:
+Di base l'app **non ha autenticazione**. Attiva HTTP Basic Auth a livello di cartella: protegge pagine, endpoint e immagini senza bisogno di codice.
 
 ```bash
-htpasswd -cB -C 10 /percorso/ezine/.htpasswd <utente>
+htpasswd -cB -C 10 /var/www/html/ezine/.htpasswd <utente>
 ```
 
-`-C 10` alza il costo bcrypt rispetto al valore predefinito (5), ormai troppo basso. Non salire oltre senza motivo: Basic Auth riverifica l'hash a ogni richiesta HTTP, quindi un costo alto rallenta l'archivio in modo proporzionale al numero di uscite.
+poi rinomina [`.htaccess.example`](.htaccess.example) in `.htaccess` e aggiorna `AuthUserFile` con il percorso assoluto reale. Lo stesso file imposta `X-Content-Type-Options`, `X-Frame-Options` e `Referrer-Policy`, e spiega perché non include una Content-Security-Policy.
 
-poi rinomina [`.htaccess.example`](.htaccess.example) in `.htaccess` e aggiorna `AuthUserFile` con il percorso assoluto reale. Dettagli e motivazione nel file stesso.
+`-C 10` alza il costo bcrypt rispetto al predefinito (5). Non salire molto oltre senza motivo: Basic Auth riverifica l'hash a ogni richiesta, e l'archivio ne fa diverse.
 
-Lo stesso file imposta `X-Content-Type-Options`, `X-Frame-Options` e `Referrer-Policy` (richiede `mod_headers`), e spiega perché **non** include una Content-Security-Policy: l'app usa script e stili inline, quindi una policy severa la romperebbe e una permissiva non proteggerebbe da nulla.
+Già inclusi e attivi anche senza `.htaccess.example`:
+- `api/.htaccess` blocca l'accesso diretto a `api/lib.php`;
+- `uploads/.htaccess` lascia servire solo immagini con il nome generato dal server e impedisce di eseguire qualunque file in quella cartella.
 
-## Personalizzazione
+## Architettura
 
-- **Testata**: cerca `La Mia Ezine` in `index.html` e `archivio.php` e sostituiscilo col nome della tua testata (compare anche nel `<title>`, nel disclaimer a fondo pagina e nel titolo delle finestre di stampa).
-- **Logo**: aggiungi un file immagine nella cartella e puntalo dall'`<img class="header-logo" src="...">` in entrambi i file — se il file manca, il logo semplicemente non viene mostrato (nessun errore, gestito via `onerror`).
-- **Motto e colori**: modifica direttamente `.motto`/`.subhead` nell'HTML e le variabili colore nel CSS (`#8b1f1f` è il rosso usato per titolo e accenti).
+| Percorso | Ruolo |
+|---|---|
+| `index.html` | Editor: pannello di controllo e anteprima A4 |
+| `archivio.php` | Archivio: elenco, ricerca, cronologia, backup |
+| `assets/render.js` | Unico motore di impaginazione, usato da editor, archivio, esportazione e stampa |
+| `assets/newspaper.css` | Aspetto del giornale, stampa normale, libretto, bianco e nero |
+| `assets/images.js` | Preparazione delle immagini nel browser e retinature |
+| `api/lib.php` | Funzioni condivise: database, migrazioni automatiche, testo, statistiche, immagini |
+| `api/*.php` | Endpoint JSON: uscite, ricerca, parole chiave, revisioni, bozza, impostazioni, immagini, backup |
+| `uploads/` | Immagini caricate |
+
+Tutto il contenuto di un numero è serializzato come JSON in un'unica colonna `content`, con le immagini come percorsi in `uploads/`. Lo schema del database è versionato (`PRAGMA user_version`) e migrato automaticamente.
 
 ## Licenza
 

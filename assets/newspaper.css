@@ -1,0 +1,145 @@
+/* newspaper.css – aspetto del giornale.
+   Condiviso da editor, archivio, esportazione HTML e stampa. Tutte le regole sono
+   circoscritte a .newspaper, così non influenzano l'interfaccia che lo ospita.
+
+   Le pagine hanno la larghezza reale di un A4 (210mm con 10mm di margine): ciò che
+   si vede in anteprima va a capo esattamente come sulla carta. La regola @page la
+   aggiunge chi stampa (normale o a libretto), perché le due modalità ne usano una
+   diversa. */
+
+.newspaper {
+  --accent: #8b1f1f;
+  --paper: #fef9ef;
+  --ink: #111;
+  font-family: 'Courier New', Courier, 'Lucida Sans Typewriter', 'Lucida Typewriter', monospace;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.newspaper * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ---------- pagine ---------- */
+.newspaper .page {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 10mm;
+  margin: 0 auto 8mm;
+  background: var(--paper);
+  border: 1px solid #222;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+.newspaper .page:last-child { margin-bottom: 0; }
+.newspaper .page-body { width: 190mm; }
+
+/* ---------- testata ---------- */
+.newspaper .header { text-align: center; border-bottom: 4px double var(--ink); margin-bottom: 1.2rem; padding-bottom: 0.8rem; }
+.newspaper .title-wrapper { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 0.2rem; }
+.newspaper .header-logo { height: 60px; width: auto; filter: grayscale(0.1); }
+.newspaper .title {
+  font-weight: 800; letter-spacing: -1px; white-space: nowrap;
+  font-family: Georgia, Clarendon, 'Times New Roman', serif; text-transform: uppercase; line-height: 1.1;
+  text-shadow: 0.02em 0.02em 0 rgba(0,0,0,0.08), -0.02em -0.01em 0 rgba(0,0,0,0.05), 0.04em 0.03em 0 rgba(0,0,0,0.02);
+  transform: rotate(0.2deg);
+}
+.newspaper .title .name-a { color: var(--accent); }
+.newspaper .title .name-b { color: #000; }
+.newspaper .motto { font-style: italic; font-size: 0.7rem; margin-top: 0.2rem; color: #444; }
+.newspaper .subhead { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; border-top: 1px solid #333; border-bottom: 1px solid #333; display: inline-block; padding: 0.2rem 0; margin-top: 0.2rem; }
+.newspaper .edition-info {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  font-size: 0.7rem; font-family: monospace; margin-top: 0.5rem; border-top: 1px solid #888; padding-top: 0.5rem;
+}
+.newspaper .edition-info > span { flex: 1; text-align: center; }
+.newspaper .edition-info > span:first-child { text-align: left; }
+.newspaper .edition-info > span:last-child { text-align: right; }
+.newspaper .edition-info > span:only-child { text-align: right; }
+
+/* testatina delle pagine interne */
+.newspaper .running-head {
+  display: flex; justify-content: space-between; gap: 1rem;
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;
+  border-bottom: 2px solid var(--ink); padding-bottom: 0.3rem; margin-bottom: 0.9rem;
+}
+.newspaper .running-head b { color: var(--accent); }
+.newspaper .page-title { font-family: Georgia, 'Times New Roman', serif; font-size: 1.9rem; text-transform: uppercase; text-align: center; margin-bottom: 0.8rem; }
+
+/* ---------- articoli ---------- */
+.newspaper article { margin-bottom: 1rem; }
+.newspaper .full-width { margin-bottom: 1.5rem; border-bottom: 1px dashed #aaa; padding-bottom: 0.8rem; }
+.newspaper .fullwidth-columns { column-gap: 1.8rem; column-rule: 1px solid #ccc; }
+.newspaper .fullwidth-columns p { break-inside: avoid; }
+.newspaper h2 { font-size: 1.5rem; font-weight: 800; text-transform: uppercase; border-left: 5px solid #c00; padding-left: 0.5rem; margin: 0.7rem 0 0.4rem; break-after: avoid; }
+.newspaper h2.fw-title { border-left: none; padding-left: 0; }
+.newspaper .kicker { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #a00; }
+.newspaper .byline { font-size: 0.7rem; font-weight: bold; border-bottom: 1px dotted #aaa; margin-bottom: 0.4rem; display: inline-block; }
+.newspaper p { font-size: 0.82rem; text-align: justify; margin-bottom: 0.6rem; hyphens: auto; }
+.newspaper a { color: inherit; text-decoration: underline; }
+.newspaper .feature-box { border: 2px solid var(--ink); padding: 0.8rem; background: #f4efdf; margin: 1rem 0; }
+.newspaper .feature-box h3 { font-size: 1rem; font-weight: 800; text-transform: uppercase; background: var(--ink); color: var(--paper); display: inline-block; padding: 0.1rem 0.4rem; letter-spacing: 1px; margin-bottom: 0.5rem; }
+.newspaper hr { margin: 1rem 0; border: none; border-top: 1px solid #222; }
+.newspaper .fake-ad { font-size: 0.7rem; text-align: center; border: 1px dashed #444; padding: 0.4rem; margin: 0.6rem 0; background: #e9e2cf; }
+.newspaper .fake-ad-colored { background: #d4b8b8; border: 1px solid var(--accent); color: #2c0a0a; }
+.newspaper footer { margin-top: 2rem; border-top: 2px solid var(--ink); padding-top: 0.8rem; font-size: 0.65rem; text-align: center; font-family: monospace; }
+.newspaper footer p { font-size: 0.65rem; text-align: center; margin-top: 0.8rem; }
+
+.newspaper .columns-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.2rem 0; }
+.newspaper .columns-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+.newspaper .columns-2 > div, .newspaper .columns-3 > div { min-width: 0; }
+
+/* pagine interne: il testo scorre da una colonna all'altra come su carta */
+.newspaper .flow { column-gap: 6mm; column-rule: 1px solid #ccc; }
+.newspaper .flow article { break-inside: auto; }
+.newspaper .flow figure { break-inside: avoid; }
+
+/* ---------- immagini ---------- */
+.newspaper .image-wrapper { margin: 0.5rem 0; display: block; width: 100%; }
+.newspaper .article-img { max-width: 100%; display: block; margin: 0 auto; border: 1px solid #aaa; }
+.newspaper .float-left { float: left; margin: 0.3rem 0.8rem 0.4rem 0; width: 45%; }
+.newspaper .float-right { float: right; margin: 0.3rem 0 0.4rem 0.8rem; width: 45%; }
+.newspaper .clearfix::after { content: ""; display: table; clear: both; }
+.newspaper .caption { font-size: 0.65rem; font-style: italic; text-align: center; margin-top: 0.2rem; color: #444; }
+/* stili storici, applicati con filtri CSS: restano per le immagini esterne,
+   che non si possono rielaborare. Le immagini caricate vengono invece
+   retinate direttamente sui pixel (vedi assets/images.js). */
+.newspaper .img-woodcut { filter: grayscale(1) contrast(300%) brightness(90%); image-rendering: crisp-edges; }
+.newspaper .img-bitmap { filter: grayscale(1) contrast(200%) brightness(80%); image-rendering: pixelated; }
+.newspaper .img-baked { image-rendering: pixelated; }
+
+/* ---------- modalità fotocopia (bianco e nero) ---------- */
+.newspaper.bw, .newspaper.bw * { color: #000 !important; border-color: #000 !important; text-shadow: none !important; box-shadow: none !important; }
+.newspaper.bw .page, .newspaper.bw .feature-box, .newspaper.bw .fake-ad { background: #fff !important; }
+.newspaper.bw .feature-box h3 { background: #000 !important; color: #fff !important; }
+.newspaper.bw .article-img:not(.img-baked), .newspaper.bw .header-logo { filter: grayscale(1) contrast(1.35); }
+
+/* ---------- stampa normale ---------- */
+@media print {
+  .newspaper:not(.booklet) .page {
+    width: auto; min-height: 0; padding: 0; margin: 0;
+    border: none; box-shadow: none; background: #fff;
+    break-after: page;
+  }
+  .newspaper:not(.booklet) .page:last-child { break-after: auto; }
+  .newspaper .title { transform: none; }
+  .newspaper .header, .newspaper .feature-box, .newspaper footer, .newspaper .fake-ad { break-inside: avoid; }
+}
+
+/* ---------- libretto A5 (A4 piegato a metà) ---------- */
+.newspaper.booklet .sheet-side {
+  width: 297mm; height: 210mm; display: flex; overflow: hidden;
+  background: #fff; margin: 0 auto 8mm; box-shadow: 0 0 10px rgba(0,0,0,0.25);
+}
+.newspaper.booklet .slot { width: 148.5mm; height: 210mm; overflow: hidden; position: relative; }
+.newspaper.booklet .slot + .slot { border-left: 1px dashed #bbb; }
+.newspaper.booklet .slot .page {
+  /* una pagina A4 intera ridotta in A5: 210 × 0,7071 = 148,5 */
+  width: 210mm; height: 297mm; min-height: 297mm; margin: 0;
+  border: none; box-shadow: none;
+  transform: scale(0.70710678); transform-origin: top left;
+  overflow: hidden;
+}
+.newspaper.booklet .page-blank { background: #fff; }
+@media print {
+  .newspaper.booklet .sheet-side { margin: 0; box-shadow: none; break-after: page; }
+  .newspaper.booklet .sheet-side:last-child { break-after: auto; }
+  .newspaper.booklet .slot + .slot { border-left: none; }
+}
