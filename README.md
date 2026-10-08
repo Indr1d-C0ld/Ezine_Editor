@@ -152,6 +152,21 @@ poi rinomina [`.htaccess.example`](.htaccess.example) in `.htaccess` e aggiorna 
 
 `-C 10` alza il costo bcrypt rispetto al predefinito (5). Non salire molto oltre senza motivo: Basic Auth riverifica l'hash a ogni richiesta, e l'archivio ne fa diverse.
 
+Basic Auth non limita i tentativi: chi conosce l'indirizzo può provare password all'infinito. Se il sito è raggiungibile da internet, conviene bloccare con [fail2ban](https://github.com/fail2ban/fail2ban) chi sbaglia troppe volte. Il filtro `apache-auth` è già incluso nel pacchetto; basta attivarlo, per esempio in `/etc/fail2ban/jail.d/apache-auth.local`:
+
+```ini
+[apache-auth]
+enabled  = true
+logpath  = /var/log/apache2/error.log
+port     = http,https
+maxretry = 5
+findtime = 10m
+bantime  = 1h
+# ignoreip = 127.0.0.1/8 ::1 192.168.1.0/24   # la tua rete, per non chiuderti fuori
+```
+
+poi `sudo fail2ban-client reload`. Il filtro conta anche le richieste ai file vietati (database, `.htpasswd`), tipiche di chi cerca falle.
+
 **HTML nei testi.** I campi di testo accettano un po' di HTML, perché i contenuti scritti prima del Markdown usano `<strong>` ed `<em>`. Il motore di impaginazione lo filtra ovunque (editor, archivio, stampa, export e pagine pubblicate): restano solo i tag di formattazione (`strong`, `b`, `em`, `i`, `u`, `s`, `mark`, `small`, `sub`, `sup`, `code`, `br`) senza attributi, più i link `http(s)` e `mailto`. `script`, `style`, `iframe`, `svg` e simili spariscono con tutto il loro contenuto; gli altri tag spariscono lasciando il testo, e ogni `<` rimasto diventa un'entità, così nessun tag può ricomporsi da frammenti. Ricerca, nuvola e statistiche ignorano lo stesso testo nascosto. Conta anche se l'editor è dietro login: un testo incollato da fuori o un backup ripristinato non possono eseguire codice nel browser di chi lavora all'ezine o di chi legge.
 
 Già inclusi e attivi anche senza `.htaccess.example`:
