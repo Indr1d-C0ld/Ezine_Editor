@@ -31,7 +31,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - Prima pagina classica (articolo a tutta larghezza, due colonne, riquadro, tre colonne di brevi, consiglio, piè di pagina) più **pagine interne** a 1–3 colonne, con il testo che scorre da una colonna all'altra
 - L'anteprima mostra ciò che stai scrivendo mentre lo scrivi, tratteggiato finché non lo aggiungi
 - Articoli spostabili trascinandoli, anche fra colonne e pagine diverse
-- Testo in **Markdown essenziale** (`**grassetto**`, `*corsivo*`, `[link](https://…)`, riga vuota = nuovo paragrafo), con barra dei comandi
+- Testo in **Markdown essenziale** (`**grassetto**`, `*corsivo*`, `[link](https://…)`, riga vuota = nuovo paragrafo), con barra dei comandi. L'HTML scritto a mano viene filtrato: restano solo i tag di formattazione
 - Testata configurabile dall'interfaccia: nome a due colori, motto, sottotitolo, contatto, prezzo, nota a piè di pagina, logo, titoli delle sezioni
 
 **Immagini**
@@ -44,7 +44,8 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - Esportazione in un unico file HTML autonomo, con stile, logo e immagini caricate incorporati
 
 **Archivio**
-- Ricerca nel testo degli articoli (lato server), statistiche reali per uscita, nuvola delle parole più frequenti
+- Ricerca nel testo degli articoli (lato server), con i risultati ordinati per numero di occorrenze; statistiche reali per uscita
+- Nuvola delle parole più frequenti: un clic su una parola mostra le uscite in cui ricorre, dalla più ricca di occorrenze
 - **Cronologia delle versioni**: ogni aggiornamento conserva la versione precedente, ripristinabile
 - "Nuovo numero da questo": duplica un'uscita incrementando il numero
 - Bozza di lavoro salvata sul server, non solo nel browser
@@ -151,6 +152,8 @@ poi rinomina [`.htaccess.example`](.htaccess.example) in `.htaccess` e aggiorna 
 
 `-C 10` alza il costo bcrypt rispetto al predefinito (5). Non salire molto oltre senza motivo: Basic Auth riverifica l'hash a ogni richiesta, e l'archivio ne fa diverse.
 
+**HTML nei testi.** I campi di testo accettano un po' di HTML, perché i contenuti scritti prima del Markdown usano `<strong>` ed `<em>`. Il motore di impaginazione lo filtra ovunque (editor, archivio, stampa, export e pagine pubblicate): restano solo i tag di formattazione (`strong`, `b`, `em`, `i`, `u`, `s`, `mark`, `small`, `sub`, `sup`, `code`, `br`) senza attributi, più i link `http(s)` e `mailto`. `script`, `style`, `iframe`, `svg` e simili spariscono con tutto il loro contenuto; gli altri tag spariscono lasciando il testo, e ogni `<` rimasto diventa un'entità, così nessun tag può ricomporsi da frammenti. Ricerca, nuvola e statistiche ignorano lo stesso testo nascosto. Conta anche se l'editor è dietro login: un testo incollato da fuori o un backup ripristinato non possono eseguire codice nel browser di chi lavora all'ezine o di chi legge.
+
 Già inclusi e attivi anche senza `.htaccess.example`:
 - `api/.htaccess` blocca l'accesso diretto a `api/lib.php`;
 - `uploads/.htaccess` lascia servire solo immagini con il nome generato dal server e impedisce di eseguire qualunque file in quella cartella.
@@ -163,8 +166,8 @@ bash tests/run.sh
 
 Esegue tutti i test su una **copia temporanea** dell'app, con un database vuoto e un server PHP di prova: il sito, il suo database e le immagini caricate non vengono mai toccati, e la copia viene eliminata alla fine. Esce con codice 0 se è tutto superato.
 
-- `tests/api_test.php` verifica il backend via HTTP: uscite e statistiche, cronologia e conflitti, ricerca, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione, pacchetto del sito e feed, backup e ripristino, compresi backup ostili e zip-slip.
-- `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, adattamento all'A4, protezione degli indirizzi email, ordine del libretto, neutralizzazione dell'HTML iniettato. Se Node manca viene saltato.
+- `tests/api_test.php` verifica il backend via HTTP: uscite e statistiche, cronologia e conflitti, ricerca con occorrenze e parole intere, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione, pacchetto del sito e feed, backup e ripristino, compresi backup ostili e zip-slip.
+- `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, adattamento all'A4, protezione degli indirizzi email, ordine del libretto, filtro dell'HTML in ogni campo di testo. Se Node manca viene saltato.
 
 Il server di prova gira apposta in un fuso orario lontano da UTC, così un errore legato all'ora locale non passa inosservato. Servono le estensioni PHP dell'app più `exif`, usata per controllare i metadati.
 

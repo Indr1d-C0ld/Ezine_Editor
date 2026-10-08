@@ -268,6 +268,31 @@ verifica('non trova i nomi dei campi del JSON ("kicker")', get('api/search_issue
 verifica('non trova i tag HTML ("strong")', get('api/search_issues.php?q=strong')['json'] === []);
 verifica('i risultati non includono il contenuto', isset($trovati[0]) && !array_key_exists('content', $trovati[0]));
 verifica('ricerca vuota → nessun risultato', get('api/search_issues.php?q=')['json'] === []);
+// Occorrenze e parole intere (il clic sulla nuvola): due uscite, una con la
+// parola tre volte e una con una sola, più un'uscita che la contiene solo come
+// pezzo di altre parole, all'inizio e alla fine.
+$contenutoCon = fn(string $testo) => contenuto(['colLeft' => [['text' => $testo]]]);
+// quella più ricca è la più vecchia: l'ordine per occorrenze deve ribaltare quello per data
+$idTanto = salva('Prova occorrenze tante', $contenutoCon('Faro, faro e ancora FARO.'));
+$idPoco = salva('Prova occorrenze poche', $contenutoCon('Il faro di notte.'));
+$idPezzo = salva('Prova occorrenze pezzo', $contenutoCon('Un antifaro e un farone.'));
+$occ = get('api/search_issues.php?q=faro&parola=1&ordina=occorrenze')['json'];
+$perId = array_column($occ, 'occorrenze', 'id');
+verifica('conta le occorrenze senza badare alle maiuscole', ($perId[$idTanto] ?? 0) === 3 && ($perId[$idPoco] ?? 0) === 1, json_encode($perId));
+verifica('ordina dalla più ricca di occorrenze', ($occ[0]['id'] ?? null) === $idTanto);
+verifica('a parola intera non trova i pezzi di altre parole', !isset($perId[$idPezzo]));
+verifica('senza parola intera trova anche i pezzi', in_array($idPezzo, array_column(get('api/search_issues.php?q=far')['json'], 'id'), true));
+verifica('a parola intera non guarda il titolo', get('api/search_issues.php?q=occorrenze&parola=1')['json'] === []);
+verifica('senza ordina resta l\'ordine per data', array_column(get('api/search_issues.php?q=faro&parola=1')['json'], 'id') === [$idPoco, $idTanto]);
+verifica('i caratteri speciali della ricerca non rompono nulla', get('api/search_issues.php?q=' . rawurlencode('fa(ro/['))['status'] === 200);
+$nuvola = array_column(get('api/keywords.php')['json'], 'count', 'word');
+verifica('il conteggio della nuvola coincide con la somma delle occorrenze', ($nuvola['faro'] ?? null) === array_sum($perId), json_encode($nuvola['faro'] ?? null));
+$idNascosto = salva('Prova testo nascosto', $contenutoCon('Visibile<script>nascostissimo()</script><!-- commentatissimo --> <style>p{stilissimo:0}</style>'));
+verifica('il contenuto di script e style non si trova con la ricerca', get('api/search_issues.php?q=nascostissimo')['json'] === [] && get('api/search_issues.php?q=stilissimo')['json'] === []);
+verifica('nemmeno quello dei commenti HTML', get('api/search_issues.php?q=commentatissimo')['json'] === []);
+verifica('il testo visibile accanto sì', in_array($idNascosto, array_column(get('api/search_issues.php?q=visibile')['json'], 'id'), true));
+verifica('e non finisce nella nuvola', !array_intersect(['nascostissimo', 'stilissimo', 'commentatissimo'], array_column(get('api/keywords.php')['json'], 'word')));
+foreach ([$idPoco, $idTanto, $idPezzo, $idNascosto] as $x) if ($x) post_json('api/delete_issue.php', ['id' => $x]);
 $parole = array_column(get('api/keywords.php')['json'], 'word');
 verifica('la nuvola contiene le parole scritte', in_array('perché', $parole, true) || in_array('città', $parole, true), implode(', ', $parole));
 verifica('la nuvola non contiene nomi di campi', !array_intersect($parole, ['text', 'title', 'kicker', 'header', 'article', 'type', 'image']));

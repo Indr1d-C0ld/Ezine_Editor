@@ -24,7 +24,11 @@
     .search { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
     .search input { flex: 1; min-width: 180px; }
     .keyword-cloud { margin: 16px 0; background: #f4efdf; padding: 10px; border: 1px solid #aaa; }
-    .keyword { display: inline-block; margin: 4px; padding: 3px 8px; background: #ddd; border-radius: 12px; font-size: 0.85rem; }
+    button.keyword { margin: 4px; padding: 3px 8px; background: #ddd; color: #222; border-radius: 12px; font-size: 0.85rem; }
+    button.keyword:hover { background: #cfc6ad; filter: none; }
+    button.keyword[aria-pressed="true"] { background: #8b1f1f; color: #fff; }
+    .filter-info { margin: 8px 0 0; padding: 6px 10px; background: #fff3c4; border: 1px solid #c9b25f; font-size: 0.85rem; }
+    .occ { color: #8b1f1f; font-size: 0.75rem; white-space: nowrap; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     th, td { border: 1px solid #aaa; padding: 7px; text-align: left; vertical-align: top; }
@@ -67,6 +71,7 @@
   <div class="keyword-cloud">
     <strong>📊 Parole più frequenti nell'archivio:</strong> <span id="cloudSpan">Caricamento…</span>
   </div>
+  <div class="filter-info" id="filterInfo" role="status" hidden></div>
 
   <div class="table-wrap">
     <table id="archiveTable">
@@ -113,7 +118,7 @@
     </div>
   </div>
 
-  <div class="footer">Le parole più frequenti danno un'idea dei temi ricorrenti nell'archivio.</div>
+  <div class="footer">Clicca una parola della nuvola per vedere le uscite in cui ricorre, dalla più ricca di occorrenze; un secondo clic torna all'elenco completo.</div>
 </div>
 
 <dialog id="revDialog" aria-labelledby="revTitle">
@@ -152,7 +157,14 @@
     for (const issue of issues) {
       const row = tbody.insertRow();
       row.insertCell().textContent = issue.id;
-      row.insertCell().textContent = issue.title;
+      const tc = row.insertCell();
+      tc.textContent = issue.title;
+      if (issue.occorrenze) {
+        const occ = document.createElement('span');
+        occ.className = 'occ';
+        occ.textContent = ` · ${issue.occorrenze} ${issue.occorrenze === 1 ? 'volta' : 'volte'}`;
+        tc.appendChild(occ);
+      }
       row.insertCell().textContent = issue.data || '';
       row.insertCell().textContent = fmtDate(issue.updated_at);
       const w = row.insertCell(); w.className = 'num'; w.textContent = issue.word_count ?? '';
@@ -219,7 +231,7 @@
       const html = await Ezine.exportDocument(r.content, mh, { title: `${Ezine.masthead(mh).fullName} – Anno ${h.anno} N. ${h.numero}` });
       const out = await postJson('api/publish.php', { issue_id: issue.id, html });
       await loadPublications();
-      renderTable(allIssues);
+      refreshTable();
       $('pubResult').textContent = `Uscita #${issue.id} pubblicata come ${out.slug}.html. Scarica di nuovo il sito per aggiornare la copia online.`;
     } catch (e) { alert('Pubblicazione non riuscita: ' + e.message); }
   }
@@ -229,7 +241,7 @@
     try {
       await postJson('api/publish.php', { issue_id: issue.id, action: 'unpublish' });
       await loadPublications();
-      renderTable(allIssues);
+      refreshTable();
       $('pubResult').textContent = `Uscita #${issue.id} ritirata.`;
     } catch (e) { alert('Ritiro non riuscito: ' + e.message); }
   }
@@ -246,7 +258,7 @@
     await loadPublications();
     try {
       allIssues = await api('api/list_issues.php');
-      renderTable(allIssues);
+      refreshTable();
     } catch (e) {
       $('emptyMsg').hidden = false;
       $('emptyMsg').textContent = 'Archivio non disponibile: ' + e.message;
@@ -261,10 +273,20 @@
       span.innerHTML = '';
       if (!words.length) { span.textContent = 'nessuna parola ancora.'; return; }
       for (const { word, count } of words) {
-        const s = document.createElement('span');
-        s.className = 'keyword';
-        s.textContent = `${word} (${count})`;
-        span.appendChild(s);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'keyword';
+        b.dataset.word = word;
+        b.setAttribute('aria-pressed', 'false');
+        b.title = `Mostra le uscite che contengono «${word}», dalla più ricca di occorrenze`;
+        b.textContent = `${word} (${count})`;
+        b.addEventListener('click', () => {
+          if (b.getAttribute('aria-pressed') === 'true') { resetSearch(); return; }
+          $('searchTitle').value = '';
+          $('searchKeyword').value = word;
+          search(true);
+        });
+        span.appendChild(b);
       }
     } catch (e) { span.textContent = 'non disponibile.'; }
   }
@@ -336,16 +358,56 @@
     } catch (e) { body.textContent = 'Cronologia non disponibile: ' + e.message; }
   }
 
-  async function search() {
+  // Con wholeWord (clic su una parola della nuvola) cerca la parola intera solo
+  // negli articoli, come la conta la nuvola; dalla casella di ricerca trova
+  // anche pezzi di parola e guarda pure titolo e data. In entrambi i casi le
+  // uscite arrivano ordinate da quella in cui il testo compare più volte.
+  let lastWholeWord = false;
+  async function search(wholeWord = false) {
+    lastWholeWord = wholeWord === true;
     const titleFilter = $('searchTitle').value.toLowerCase();
     const keyword = $('searchKeyword').value.trim();
     let filtered = allIssues;
     if (keyword) {
-      try { filtered = await api('api/search_issues.php?q=' + encodeURIComponent(keyword)); }
+      const qs = new URLSearchParams({ q: keyword, ordina: 'occorrenze' });
+      if (wholeWord === true) qs.set('parola', '1');
+      try { filtered = await api('api/search_issues.php?' + qs); }
       catch (e) { alert('Ricerca non riuscita: ' + e.message); return; }
     }
     if (titleFilter) filtered = filtered.filter(i => (i.title || '').toLowerCase().includes(titleFilter));
+    for (const b of document.querySelectorAll('button.keyword')) {
+      b.setAttribute('aria-pressed', String(wholeWord === true && b.dataset.word === keyword));
+    }
+    const info = $('filterInfo');
+    info.hidden = !keyword && !titleFilter;
+    if (!info.hidden) {
+      const cosa = [keyword && `«${keyword}»${wholeWord === true ? ' (parola intera, negli articoli)' : ''}`,
+                    titleFilter && `titolo con «${$('searchTitle').value}»`].filter(Boolean).join(' e ');
+      info.textContent = `${filtered.length} ${filtered.length === 1 ? 'uscita' : 'uscite'} per ${cosa}` +
+        (keyword ? ', dalla più ricca di occorrenze. ' : '. ');
+      const all = document.createElement('button');
+      all.type = 'button';
+      all.className = 'secondary';
+      all.textContent = 'Mostra tutte';
+      all.addEventListener('click', resetSearch);
+      info.appendChild(all);
+    }
     renderTable(filtered);
+  }
+
+  // Dopo una modifica (pubblica, ritira, elimina) ridisegna l'elenco senza
+  // perdere il filtro attivo.
+  function refreshTable() {
+    if ($('filterInfo').hidden) renderTable(allIssues);
+    else search(lastWholeWord);
+  }
+
+  function resetSearch() {
+    $('searchTitle').value = '';
+    $('searchKeyword').value = '';
+    $('filterInfo').hidden = true;
+    for (const b of document.querySelectorAll('button.keyword')) b.setAttribute('aria-pressed', 'false');
+    renderTable(allIssues);
   }
 
   async function restore() {
@@ -389,9 +451,9 @@
     } catch (e) { $('cleanupResult').textContent = 'Eliminazione non riuscita: ' + e.message; }
   }
 
-  $('searchBtn').addEventListener('click', search);
+  $('searchBtn').addEventListener('click', () => search());
   for (const id of ['searchTitle', 'searchKeyword']) $(id).addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
-  $('resetBtn').addEventListener('click', () => { $('searchTitle').value = ''; $('searchKeyword').value = ''; renderTable(allIssues); });
+  $('resetBtn').addEventListener('click', resetSearch);
   $('revClose').addEventListener('click', () => $('revDialog').close());
   $('restoreBtn').addEventListener('click', restore);
   $('cleanupCheckBtn').addEventListener('click', cleanupCheck);

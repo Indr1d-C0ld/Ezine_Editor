@@ -133,9 +133,16 @@ function ezine_testo_redazionale($nodo, $chiave = null): string {
     return '';
 }
 
+// Come il filtro di assets/render.js: il contenuto dei tag che le pagine non
+// mostrano (script, style...) e i commenti HTML non contano come testo, né per
+// la ricerca né per la nuvola né per le statistiche.
+const EZINE_TAG_NASCOSTI = 'script|style|iframe|frame|object|embed|noscript|template|textarea|select|svg|math|title|head|xmp|plaintext';
+
 // Testo leggibile: senza tag HTML né sintassi Markdown.
 function ezine_testo_pulito($contenuto): string {
-    $t = strip_tags(ezine_testo_redazionale($contenuto));
+    $t = preg_replace(['/<!--.*?-->/su', '#<(' . EZINE_TAG_NASCOSTI . ')\b(?:[^>]*[^/>])?>.*?(?:</\1\s*>|$)#isu'], ' ',
+                      ezine_testo_redazionale($contenuto));
+    $t = strip_tags($t);
     $t = preg_replace('/\[([^\]]*)\]\([^)]*\)/u', '$1', $t);   // [testo](url) -> testo
     $t = str_replace(['**', '__'], '', $t);
     $t = html_entity_decode($t, ENT_QUOTES | ENT_HTML5, 'UTF-8');

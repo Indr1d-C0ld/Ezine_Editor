@@ -94,12 +94,56 @@
     return s.replace(/\u0000(\d+)\u0000/g, (_, i) => link[i]);
   }
 
+  // ---------- filtro dell'HTML scritto dall'autore ----------
+
+  // I testi accettano un po' di HTML: i contenuti scritti prima del Markdown
+  // usano <strong> ed <em>. Restano solo i tag di formattazione elencati qui,
+  // senza attributi, più <a> con un indirizzo http(s) o mailto. Tutto il resto
+  // viene tolto: i tag pericolosi insieme al loro contenuto (script, style,
+  // iframe...), gli altri lasciando il testo. Alla fine ogni < e > rimasto nel
+  // testo diventa entità, così nessun tag può ricomporsi da frammenti.
+  // Vale ovunque: editor, archivio, stampa, export e pagine pubblicate.
+  const TAG_PERMESSI = new Set(['strong', 'b', 'em', 'i', 'u', 's', 'mark', 'small', 'sub', 'sup', 'br', 'code', 'a']);
+  const TAG_DA_SVUOTARE = new Set(['script', 'style', 'iframe', 'frame', 'object', 'embed', 'noscript', 'template',
+                                   'textarea', 'select', 'svg', 'math', 'title', 'head', 'xmp', 'plaintext']);
+  const ENT_ATTR = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
+
+  function sanitize(html) {
+    const src = String(html == null ? '' : html);
+    const tag = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9-]*)\b([^>]*)>/g;
+    const testo = t => t.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let out = '', ultimo = 0, svuota = null, m;
+    while ((m = tag.exec(src))) {
+      if (!svuota) out += testo(src.slice(ultimo, m.index));
+      ultimo = tag.lastIndex;
+      if (!m[2]) continue;                                   // commento HTML
+      const chiude = m[1] === '/', nome = m[2].toLowerCase();
+      if (svuota) { if (chiude && nome === svuota) svuota = null; continue; }
+      if (TAG_DA_SVUOTARE.has(nome)) { if (!chiude && !/\/\s*$/.test(m[3])) svuota = nome; continue; }
+      if (!TAG_PERMESSI.has(nome)) continue;
+      if (nome === 'br') { if (!chiude) out += '<br>'; continue; }
+      if (chiude) { out += `</${nome}>`; continue; }
+      if (nome === 'a') {
+        const h = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(m[3]);
+        const url = h ? (h[1] ?? h[2] ?? h[3]).replace(/&amp;|&quot;|&#39;|&lt;|&gt;/g, x => ENT_ATTR[x]).trim() : '';
+        out += /^(https?:\/\/|mailto:)/i.test(url) ? `<a href="${esc(url)}">` : '<a>';
+        continue;
+      }
+      out += `<${nome}>`;
+    }
+    if (!svuota) out += testo(src.slice(ultimo));
+    return out;
+  }
+
+  const safe = t => sanitize(t);                              // titoli, occhielli, firme, didascalie
+  const md = t => sanitize(inlineMd(String(t || '')));         // testi brevi con Markdown
+
   function paragraphs(text) {
     return String(text || '')
       .split(/\n\s*\n/)
       .map(p => p.trim())
       .filter(Boolean)
-      .map(p => inlineMd(p).replace(/\n/g, '<br>'));
+      .map(p => sanitize(inlineMd(p).replace(/\n/g, '<br>')));
   }
 
   // Divide un paragrafo HTML circa a metà, su uno spazio fuori dai tag.
@@ -123,7 +167,7 @@
                  : !art.imageBaked && art.imageStyle === 'bitmap' ? 'img-bitmap' : '';
     const cls = ['article-img', legacy, art.imageBaked ? 'img-baked' : ''].filter(Boolean).join(' ');
     const fl = art.imageFloat === 'left' || art.imageFloat === 'right' ? ` float-${art.imageFloat}` : '';
-    const cap = art.imageCaption ? `<figcaption class="caption">${art.imageCaption}</figcaption>` : '';
+    const cap = art.imageCaption ? `<figcaption class="caption">${safe(art.imageCaption)}</figcaption>` : '';
     return `<figure class="image-wrapper${fl}"><img class="${cls}" src="${esc(art.image)}" alt="${esc(art.imageCaption || 'illustrazione')}">${cap}</figure>`;
   }
 
@@ -131,13 +175,13 @@
     if (!art) return '';
     const fw = !!opts.fullWidth;
     let h = '';
-    if (art.kicker) h += `<div class="kicker">${art.kicker}</div>`;
+    if (art.kicker) h += `<div class="kicker">${safe(art.kicker)}</div>`;
     if (art.title) {
       h += fw && art.fwTitleSize
-        ? `<h2 class="fw-title" style="font-size:${esc(art.fwTitleSize)};text-align:${esc(art.fwTitleAlign || 'center')}">${art.title}</h2>`
-        : `<h2>${art.title}</h2>`;
+        ? `<h2 class="fw-title" style="font-size:${esc(art.fwTitleSize)};text-align:${esc(art.fwTitleAlign || 'center')}">${safe(art.title)}</h2>`
+        : `<h2>${safe(art.title)}</h2>`;
     }
-    if (art.byline) h += `<div class="byline">${art.byline}</div>`;
+    if (art.byline) h += `<div class="byline">${safe(art.byline)}</div>`;
 
     const img = renderImage(art);
     const pos = art.imagePosition || 'top';
@@ -197,7 +241,7 @@
     let h = `<div><h2>${title}</h2><div class="ez-drop" data-loc="${key}">`;
     d[key].forEach((item, i) => {
       const ghost = isGhost(o, key, i) ? ' ez-ghost' : '';
-      h += `<p class="ez-item${ghost}">${inlineMd(String(item.text || ''))}${o.editable ? tools(key, i, ['edit', 'delete']) : ''}</p>`;
+      h += `<p class="ez-item${ghost}">${md(item.text)}${o.editable ? tools(key, i, ['edit', 'delete']) : ''}</p>`;
     });
     if (o.editable) h += tools(key, null, ['add']);
     return h + '</div></div>';
@@ -234,8 +278,8 @@
 
   function renderFooter(d, m, o) {
     let h = '<footer><div class="edition-info">';
-    h += `<span class="ez-item${isGhost(o, 'nextIssue') ? ' ez-ghost' : ''}">➤ PROSSIMO NUMERO: ${inlineMd(d.nextIssue || '')}${o.editable ? tools('nextIssue', null, ['edit', 'delete']) : ''}</span>`;
-    h += `<span class="ez-item${isGhost(o, 'rubric') ? ' ez-ghost' : ''}">➤ RUBRICA FISSA: ${inlineMd(d.fixedRubric || '')}${o.editable ? tools('rubric', null, ['edit', 'delete']) : ''}</span>`;
+    h += `<span class="ez-item${isGhost(o, 'nextIssue') ? ' ez-ghost' : ''}">➤ PROSSIMO NUMERO: ${md(d.nextIssue)}${o.editable ? tools('nextIssue', null, ['edit', 'delete']) : ''}</span>`;
+    h += `<span class="ez-item${isGhost(o, 'rubric') ? ' ez-ghost' : ''}">➤ RUBRICA FISSA: ${md(d.fixedRubric)}${o.editable ? tools('rubric', null, ['edit', 'delete']) : ''}</span>`;
     h += '</div>';
     if (m.disclaimer) h += `<p>${esc(m.disclaimer.replace(/\{nome\}/g, m.fullName))}</p>`;
     return h + '</footer>';
@@ -254,7 +298,7 @@
     h += `<div class="ez-drop" data-loc="colRight">${articleList(d.colRight, 'colRight', o)}</div></div>`;
 
     if (d.fakeAd.enabled) {
-      h += `<div class="fake-ad ez-item${d.fakeAd.colored ? ' fake-ad-colored' : ''}${isGhost(o, 'fakeAd') ? ' ez-ghost' : ''}">${inlineMd(d.fakeAd.text || '')}${o.editable ? tools('fakeAd', null, ['edit', 'hide']) : ''}</div>`;
+      h += `<div class="fake-ad ez-item${d.fakeAd.colored ? ' fake-ad-colored' : ''}${isGhost(o, 'fakeAd') ? ' ez-ghost' : ''}">${md(d.fakeAd.text)}${o.editable ? tools('fakeAd', null, ['edit', 'hide']) : ''}</div>`;
     } else if (o.editable) {
       h += `<div class="fake-ad ez-empty"><em>Consiglio disabilitato</em>${tools('fakeAd', null, ['enable'])}</div>`;
     }
@@ -275,7 +319,7 @@
   function renderInner(d, m, page, i, o) {
     const n = i + 2;
     let h = `<div class="running-head"><span><b>${esc(m.fullName)}</b></span><span>Anno ${esc(d.header.anno)} – Numero ${esc(d.header.numero)}</span><span>pag. ${n}</span></div>`;
-    if (page.title) h += `<h1 class="page-title">${page.title}</h1>`;
+    if (page.title) h += `<h1 class="page-title">${safe(page.title)}</h1>`;
     const loc = `page:${i}`;
     h += `<div class="flow ez-drop" data-loc="${loc}" style="column-count:${page.columns}">${articleList(page.articles, loc, o)}</div>`;
     if (o.editable && !page.articles.length) {
@@ -548,7 +592,7 @@
 
   global.Ezine = {
     SCHEMA, FIT_MIN, DEFAULT_MASTHEAD, masthead, normalize, clone, esc,
-    inlineMd, paragraphs, renderArticle, render, renderBooklet, bookletOrder,
+    inlineMd, sanitize, paragraphs, renderArticle, render, renderBooklet, bookletOrder,
     measureOverflow, a4LimitPx, fitScale, measurePageAt, obfuscateEmails,
     exportDocument, printDocument, inlineAssets, favicon
   };

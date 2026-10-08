@@ -152,6 +152,34 @@ verifica('l\'export protegge il contatto della testata', !esportato.includes(ind
 verifica('l\'anteprima dell\'editor e la stampa non vengono toccate', E.render({}, { contact: indirizzo }).includes(indirizzo));
 
 // ===================================================================
+sezione('Filtro dell\'HTML nei testi');
+const S = E.sanitize;
+verifica('script tolto insieme al contenuto', S('ciao<script>alert(1)</script> mondo') === 'ciao mondo', S('ciao<script>alert(1)</script> mondo'));
+verifica('anche se scritto in maiuscolo', S('a<SCRIPT type="x">alert(1)</SCRIPT>b') === 'ab');
+verifica('style e iframe tolti col contenuto', S('<style>p{}</style><iframe src="x">y</iframe>z') === 'z');
+verifica('gli attributi on* spariscono', S('<b onclick="alert(1)">x</b>') === '<b>x</b>');
+verifica('le immagini vengono tolte', !S('<img src=x onerror=alert(1)>').includes('<img'));
+verifica('link javascript: senza indirizzo', S('<a href="javascript:alert(1)">x</a>') === '<a>x</a>', S('<a href="javascript:alert(1)">x</a>'));
+verifica('anche se nascosto con le entità', !/javascript/i.test(S('<a href="&#106;avascript:alert(1)">x</a>')));
+verifica('link https conservato', S('<a href="https://ex.org/?a=1&amp;b=2" target="_blank">x</a>') === '<a href="https://ex.org/?a=1&amp;b=2">x</a>', S('<a href="https://ex.org/?a=1&amp;b=2" target="_blank">x</a>'));
+verifica('mailto conservato', S("<a href='mailto:a@b.it'>x</a>") === '<a href="mailto:a@b.it">x</a>');
+verifica('grassetti e corsivi dei vecchi numeri restano', S('<strong>forte</strong> e <em>corsivo</em><br/>') === '<strong>forte</strong> e <em>corsivo</em><br>');
+verifica('un tag ricomposto da frammenti resta testo', !/<script/i.test(S('<scr<script>x</script>ipt>alert(1)</script>')), S('<scr<script>x</script>ipt>alert(1)</script>'));
+verifica('i < e > sciolti diventano entità', S('3 < 4 > 2') === '3 &lt; 4 &gt; 2');
+verifica('i commenti HTML spariscono', S('a<!-- <script>x</script> -->b') === 'ab');
+verifica('un tag sconosciuto lascia il testo', S('<div class="x"><span>testo</span></div>') === 'testo');
+verifica('svg tolto col contenuto', S('<svg><script>alert(1)</script></svg>ok') === 'ok');
+const trappola = '<img src=x onerror=alert(1)><script>alert(2)</script>';
+const docTrappola = { header: { anno: 'I', numero: '1' },
+  colLeft: [{ title: 'T' + trappola, kicker: trappola, byline: trappola, text: 'corpo ' + trappola, image: '', imageCaption: trappola }],
+  roundup: [{ text: trappola }], letters: [{ text: trappola }], fight: [{ text: trappola }], nextIssue: trappola, fixedRubric: trappola,
+  fakeAd: { enabled: true, text: trappola }, straightFromTheMan: { text: trappola },
+  pages: [{ title: trappola, columns: 2, articles: [] }] };
+const resaTrappola = E.render(docTrappola, null);
+verifica('nessun campo dell\'autore lascia passare script o handler', !/<script|onerror=alert/i.test(resaTrappola));
+verifica('il Markdown continua a funzionare', E.paragraphs('**forte** e [link](https://ex.org)')[0] === '<strong>forte</strong> e <a href="https://ex.org">link</a>', E.paragraphs('**forte** e [link](https://ex.org)')[0]);
+
+// ===================================================================
 sezione('Libretto');
 const ordine = k => JSON.stringify(E.bookletOrder(k).sides);
 verifica('8 pagine: [8|1] [2|7] [6|3] [4|5]', ordine(8) === '[[8,1],[2,7],[6,3],[4,5]]', ordine(8));
