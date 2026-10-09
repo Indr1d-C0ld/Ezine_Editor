@@ -14,7 +14,8 @@
 // pagina) passano una chiave: i tasti ravvicinati con la stessa chiave
 // diventano un solo passo, invece di uno per lettera.
 //
-// La cronologia vive solo in memoria: ricaricando la pagina riparte vuota.
+// dump() e load() servono all'editor per conservarla nella scheda del browser
+// (sessionStorage), così sopravvive al ricaricamento della pagina.
 // =============================================================================
 (function (global) {
   'use strict';
@@ -62,7 +63,29 @@
       redoLabel: () => (redoStack.length ? redoStack[redoStack.length - 1].label : ''),
       size: () => ({ undo: undoStack.length, redo: redoStack.length }),
       clear() { undoStack = []; redoStack = []; pending = null; lastKey = null; },
+
+      // Gli ultimi `max` passi in ciascuna direzione, pronti per JSON.stringify.
+      dump(max = limit) {
+        const ultimi = a => (max > 0 ? a.slice(-max) : []);
+        return { undo: ultimi(undoStack), redo: ultimi(redoStack) };
+      },
+      // Riprende una cronologia salvata con dump(). Se qualcosa non torna non
+      // tocca quella attuale e restituisce false.
+      load(data) {
+        const valide = a => Array.isArray(a) && a.every(e => e && typeof e.label === 'string' && e.state &&
+          typeof e.state.content === 'string' && leggibile(e.state.content));
+        if (!data || !valide(data.undo) || !valide(data.redo)) return false;
+        undoStack = data.undo.slice(-limit);
+        redoStack = data.redo.slice(-limit);
+        pending = null;
+        lastKey = null;
+        return true;
+      },
     };
+
+    function leggibile(json) {
+      try { JSON.parse(json); return true; } catch (e) { return false; }
+    }
 
     function step(from, to, current) {
       pending = null;

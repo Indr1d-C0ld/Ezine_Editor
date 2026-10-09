@@ -13,7 +13,10 @@
 // il testo appare subito e le immagini arrivano quando servono, e quelle
 // ripetute, come il logo in ogni uscita, si scaricano una volta sola. Conta
 // soprattutto sui servizi onion, dove la banda è poca.
-require __DIR__ . '/lib.php';
+//
+// site_preview.php include questo file per mostrare il sito senza scaricarlo:
+// in quel caso si ferma prima dello zip e lascia i file in $file.
+require_once __DIR__ . '/lib.php';
 ezine_metodo('GET');
 ini_set('memory_limit', '384M');   // decodifica e ricampionamento delle immagini
 $db = ezine_db();
@@ -26,10 +29,37 @@ $nomeB = $mh['nameB'] ?? 'EZINE';
 $motto = $mh['motto'] ?? '';
 $e = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-$r = $db->query('SELECT * FROM publications ORDER BY published_at DESC, issue_id DESC');
+// Le etichette si leggono dall'uscita in archivio, non dall'istantanea: sono
+// dati d'archivio, e cambiarle non richiede di ripubblicare.
+$r = $db->query('SELECT p.*, i.tags AS tags FROM publications p LEFT JOIN issues i ON i.id = p.issue_id
+                 ORDER BY p.published_at DESC, p.issue_id DESC');
 $uscite = [];
-while ($row = $r->fetchArray(SQLITE3_ASSOC)) $uscite[] = $row;
+while ($row = $r->fetchArray(SQLITE3_ASSOC)) {
+    $row['tags'] = ezine_etichette(json_decode($row['tags'] ?? '[]', true));
+    $uscite[] = $row;
+}
 if (!$uscite) ezine_errore('Nessuna uscita pubblicata: pubblicane almeno una dall\'archivio', 404);
+
+// Etichette dell'indice: raggruppate senza badare alle maiuscole, in ordine
+// alfabetico, ciascuna con un'ancora per la sezione "Per etichetta".
+$etichette = [];
+foreach ($uscite as $u) {
+    foreach ($u['tags'] as $t) {
+        $k = mb_strtolower($t);
+        $etichette[$k] ??= ['nome' => $t, 'uscite' => []];
+        $etichette[$k]['uscite'][] = $u;
+    }
+}
+$ascii = fn($t) => strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $t) ?: '');
+uksort($etichette, fn($a, $b) => strcmp($ascii($a), $ascii($b)) ?: strcmp($a, $b));
+$ancore = [];
+foreach ($etichette as $k => &$g) {
+    $base = 'etichetta-' . (trim(preg_replace('/[^a-z0-9]+/', '-', $ascii($g['nome'])), '-') ?: 'x');
+    $id = $base;
+    for ($n = 2; in_array($id, $ancore, true); $n++) $id = "$base-$n";
+    $g['id'] = $ancore[$k] = $id;
+}
+unset($g);
 
 $head = '<meta name="referrer" content="no-referrer">'
       . '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' data:; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">'
@@ -143,8 +173,23 @@ foreach ($uscite as $u) {
 $logo = logo_incorporato($mh['logo'] ?? '');
 $righe = '';
 foreach ($uscite as $u) {
-    $righe .= '<li><a href="' . $e($u['slug']) . '.html"><span class="num">Anno ' . $e($u['anno']) . ' – Numero ' . $e($u['numero'])
-            . '</span><span class="tit">' . $e($u['title']) . '</span><span class="dat">' . $e($u['data']) . '</span></a></li>';
+    $tag = '';
+    foreach ($u['tags'] as $t) $tag .= '<a href="#' . $ancore[mb_strtolower($t)] . '">' . $e($t) . '</a>';
+    $righe .= '<li><a class="uscita" href="' . $e($u['slug']) . '.html"><span class="num">Anno ' . $e($u['anno']) . ' – Numero ' . $e($u['numero'])
+            . '</span><span class="tit">' . $e($u['title']) . '</span><span class="dat">' . $e($u['data']) . '</span></a>'
+            . ($tag ? '<span class="tags">' . $tag . '</span>' : '') . '</li>';
+}
+$sezioni = '';
+if ($etichette) {
+    $sezioni = '<h2 class="per-etichetta">Per etichetta</h2>';
+    foreach ($etichette as $g) {
+        $sezioni .= '<section id="' . $g['id'] . '"><h3>' . $e($g['nome']) . ' <span>(' . count($g['uscite']) . ')</span></h3><ul class="breve">';
+        foreach ($g['uscite'] as $u) {
+            $sezioni .= '<li><a href="' . $e($u['slug']) . '.html">Anno ' . $e($u['anno']) . ' – Numero ' . $e($u['numero'])
+                      . ($u['title'] !== '' ? ' · ' . $e($u['title']) : '') . '</a></li>';
+        }
+        $sezioni .= '</ul></section>';
+    }
 }
 $feedLink = $cfg['publicUrl'] ? '<p class="feed"><a href="feed.xml">Feed RSS</a></p>' : '';
 $indice = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">' . $head
@@ -159,20 +204,32 @@ $indice = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">' . $head
       .motto { font-style: italic; color: #444; margin: 10px 0 0; font-size: .85rem; }
       h2 { font: bold .8rem monospace; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #888; padding-bottom: 6px; }
       ul { list-style: none; padding: 0; margin: 0; }
-      li a { display: grid; grid-template-columns: 11rem 1fr; gap: 2px 16px; padding: 14px 4px; border-bottom: 1px dashed #aaa; color: inherit; text-decoration: none; }
-      li a:hover .tit, li a:focus .tit { text-decoration: underline; }
+      li { border-bottom: 1px dashed #aaa; }
+      a.uscita { display: grid; grid-template-columns: 11rem 1fr; gap: 2px 16px; padding: 14px 4px; color: inherit; text-decoration: none; }
+      a.uscita:hover .tit, a.uscita:focus .tit { text-decoration: underline; }
+      .tags { display: block; margin: -8px 0 0; padding: 0 4px 12px calc(11rem + 20px); }
+      .tags a, h3 span { font-size: .72rem; }
+      .tags a { display: inline-block; margin: 0 4px 4px 0; padding: 1px 7px; border: 1px solid #c9b8a0; border-radius: 9px; color: #8b1f1f; text-decoration: none; }
+      .tags a:hover, .tags a:focus { background: #f1e6d0; }
+      h2.per-etichetta { margin-top: 40px; }
+      section { margin: 0 0 18px; scroll-margin-top: 12px; }
+      section:target h3 { background: #f1e6d0; }
+      h3 { font: bold 1rem Georgia, serif; margin: 0 0 4px; padding: 2px 4px; }
+      h3 span { font-family: monospace; font-weight: normal; color: #555; }
+      ul.breve li { border: 0; padding: 3px 4px 3px 1.2rem; font-size: .85rem; }
+      ul.breve a { color: inherit; }
       .num { font-size: .78rem; color: #8b1f1f; font-weight: bold; }
       .tit { font: bold 1.05rem Georgia, serif; }
       .dat { grid-column: 2; font-size: .75rem; color: #555; }
       .feed { text-align: center; font-size: .8rem; margin-top: 30px; }
       .feed a { color: #8b1f1f; }
       footer { text-align: center; font-size: .7rem; color: #555; margin-top: 40px; border-top: 2px solid #111; padding-top: 12px; }
-      @media (max-width: 560px) { li a { grid-template-columns: 1fr; } .dat { grid-column: 1; } }
+      @media (max-width: 560px) { a.uscita { grid-template-columns: 1fr; } .dat { grid-column: 1; } .tags { padding-left: 4px; } }
     </style></head><body><main><header>'
   . ($logo ? '<img src="' . $logo . '" alt="">' : '')
   . '<h1><span class="a">' . $e($nomeA) . '</span> ' . $e($nomeB) . '</h1>'
   . ($motto ? '<p class="motto">“' . $e($motto) . '”</p>' : '')
-  . '</header><h2>Uscite</h2><ul>' . $righe . '</ul>' . $feedLink
+  . '</header><h2>Uscite</h2><ul>' . $righe . '</ul>' . $sezioni . $feedLink
   . '<footer>' . $e($nome) . '</footer></main></body></html>';
 $indice = estrai_immagini($indice, $immagini);
 
@@ -237,7 +294,8 @@ if ($cfg['publicUrl']) {
         $giorno = gmdate('D, d M Y', strtotime($u['published_at'] . ' UTC')) . ' 00:00:00 +0000';
         $items .= "<item><title>{$x("Anno {$u['anno']} – Numero {$u['numero']}: {$u['title']}")}</title>"
                 . "<link>{$x($url)}</link><guid isPermaLink=\"true\">{$x($url)}</guid>"
-                . "<pubDate>$giorno</pubDate><description>{$x(descrizione_feed($u['html'], (string) $u['data']))}</description></item>";
+                . "<pubDate>$giorno</pubDate>" . implode('', array_map(fn($t) => "<category>{$x($t)}</category>", $u['tags']))
+                . "<description>{$x(descrizione_feed($u['html'], (string) $u['data']))}</description></item>";
     }
     $feed = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
           . '<rss version="2.0"><channel>'
@@ -266,13 +324,15 @@ $leggimi = "Sito pubblico di $nome\n" . str_repeat('=', mb_strlen("Sito pubblico
 // Lo ZIP registra le date nell'ora locale del server: con il fuso italiano la
 // data fissa diventerebbe 01:00, rivelando il fuso orario. In UTC resta 00:00.
 // (PHP ripristina l'ambiente originale a fine richiesta.)
+$file = ['index.html' => $indice, 'robots.txt' => $robots, 'LEGGIMI.txt' => $leggimi] + $pagine + $immagini;
+if ($feed) $file['feed.xml'] = $feed;
+if (defined('EZINE_ANTEPRIMA')) return;
+
 putenv('TZ=UTC');
 $tmp = tempnam(sys_get_temp_dir(), 'ezsite');
 $zip = new ZipArchive();
 if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) ezine_errore('Impossibile creare il pacchetto', 500);
 $dir = 'sito/';
-$file = ['index.html' => $indice, 'robots.txt' => $robots, 'LEGGIMI.txt' => $leggimi] + $pagine + $immagini;
-if ($feed) $file['feed.xml'] = $feed;
 foreach ($file as $nomeFile => $contenuto) {
     $zip->addFromString($dir . $nomeFile, $contenuto);
     // Data fissa sui file: l'orario reale di creazione del pacchetto non deve

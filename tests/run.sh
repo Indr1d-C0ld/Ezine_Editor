@@ -31,9 +31,13 @@ COPIA="$(mktemp -d -t ezine-test-XXXXXX)"
 LOG="$COPIA.server.log"
 SERVER_PID=""
 
+# L'anteprima del sito si costruisce nella cartella temporanea di sistema, in
+# una sottocartella legata al percorso dell'app (vedi api/site_preview.php).
+ANTEPRIMA="$(php -r 'echo sys_get_temp_dir();')/ezine-anteprima-$(php -r 'echo substr(sha1(realpath($argv[1])), 0, 10);' "$COPIA")"
+
 pulizia() {
     [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null && wait "$SERVER_PID" 2>/dev/null
-    rm -rf "$COPIA" "$LOG"
+    rm -rf "$COPIA" "$LOG" "$ANTEPRIMA"
 }
 trap pulizia EXIT INT TERM
 

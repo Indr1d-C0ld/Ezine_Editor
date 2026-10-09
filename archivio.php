@@ -29,6 +29,13 @@
     button.keyword[aria-pressed="true"] { background: #8b1f1f; color: #fff; }
     .filter-info { margin: 8px 0 0; padding: 6px 10px; background: #fff3c4; border: 1px solid #c9b25f; font-size: 0.85rem; }
     .occ { color: #8b1f1f; font-size: 0.75rem; white-space: nowrap; }
+    td.tags { min-width: 140px; }
+    button.tag { margin: 2px 3px 2px 0; padding: 1px 7px; background: #fff; color: #8b1f1f; border: 1px solid #c9b8a0; border-radius: 9px; font-size: 0.75rem; }
+    button.tag:hover { background: #f1e6d0; filter: none; }
+    button.tag[aria-pressed="true"] { background: #8b1f1f; color: #fff; border-color: #8b1f1f; }
+    button.tag-edit { padding: 1px 5px; background: transparent; color: #555; font-size: 0.8rem; }
+    td.tags input { width: 100%; box-sizing: border-box; font-size: 0.8rem; }
+    td.tags .hint { font-size: 0.7rem; color: #666; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     th, td { border: 1px solid #aaa; padding: 7px; text-align: left; vertical-align: top; }
@@ -71,12 +78,16 @@
   <div class="keyword-cloud">
     <strong>📊 Parole più frequenti nell'archivio:</strong> <span id="cloudSpan">Caricamento…</span>
   </div>
+  <div class="keyword-cloud" id="tagBar" hidden>
+    <strong>🏷️ Etichette:</strong> <span id="tagSpan"></span>
+  </div>
+  <datalist id="tagList"></datalist>
   <div class="filter-info" id="filterInfo" role="status" hidden></div>
 
   <div class="table-wrap">
     <table id="archiveTable">
       <thead>
-        <tr><th>ID</th><th>Titolo</th><th>Data uscita</th><th>Ultima modifica</th><th>Parole</th><th>Caratteri</th><th>Sito</th><th>Azioni</th></tr>
+        <tr><th>ID</th><th>Titolo</th><th>Etichette</th><th>Data uscita</th><th>Ultima modifica</th><th>Parole</th><th>Caratteri</th><th>Sito</th><th>Azioni</th></tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -93,6 +104,7 @@
         <input type="url" id="pubUrl" placeholder="https://… oppure http://….onion/"></label>
       <label style="display:block;font-size:0.8rem;margin-top:4px"><input type="checkbox" id="pubNoindex"> Escludi dai motori di ricerca</label>
       <button id="pubSaveBtn" class="secondary">Salva impostazioni</button>
+      <a class="btn secondary" id="pubPreview" href="api/site_preview.php/index.html" target="_blank" rel="noopener" title="Il sito come lo vedranno i lettori. Lo vedi solo tu, dietro il login: ai lettori questo server non mostra nulla.">👁️ Anteprima del sito</a>
       <a class="btn" id="pubDownload" href="api/site_package.php">Scarica il sito (.zip)</a>
       <div class="result" id="pubResult"></div>
     </div>
@@ -118,7 +130,7 @@
     </div>
   </div>
 
-  <div class="footer">Clicca una parola della nuvola per vedere le uscite in cui ricorre, dalla più ricca di occorrenze; un secondo clic torna all'elenco completo.</div>
+  <div class="footer">Clicca una parola della nuvola per vedere le uscite in cui ricorre, dalla più ricca di occorrenze, o un'etichetta per vedere le uscite che la portano; un secondo clic torna all'elenco completo.</div>
 </div>
 
 <dialog id="revDialog" aria-labelledby="revTitle">
@@ -165,6 +177,7 @@
         occ.textContent = ` · ${issue.occorrenze} ${issue.occorrenze === 1 ? 'volta' : 'volte'}`;
         tc.appendChild(occ);
       }
+      tagsCell(row.insertCell(), issue);
       row.insertCell().textContent = issue.data || '';
       row.insertCell().textContent = fmtDate(issue.updated_at);
       const w = row.insertCell(); w.className = 'num'; w.textContent = issue.word_count ?? '';
@@ -208,7 +221,7 @@
       $('pubSummary').textContent = n
         ? `${n} uscit${n === 1 ? 'a pubblicata' : 'e pubblicate'}${stale ? `, di cui ${stale} modificat${stale === 1 ? 'a' : 'e'} dopo la pubblicazione (va ripubblicat${stale === 1 ? 'a' : 'e'} per aggiornare il sito)` : ''}.`
         : 'Nessuna uscita pubblicata: usa “🌐 Pubblica” nella tabella.';
-      $('pubDownload').hidden = n === 0;
+      $('pubDownload').hidden = $('pubPreview').hidden = n === 0;
       const contatto = (settings.contact || '').trim();
       $('pubContactNote').hidden = !contatto;
       $('pubContactNote').textContent = `Le pagine pubblicate mostrano il contatto “${contatto}” impostato nella testata. Se non vuoi diffonderlo, svuota il campo nelle impostazioni dell'editor e ripubblica.`;
@@ -258,6 +271,7 @@
     await loadPublications();
     try {
       allIssues = await api('api/list_issues.php');
+      renderTagBar();
       refreshTable();
     } catch (e) {
       $('emptyMsg').hidden = false;
@@ -362,6 +376,104 @@
   // negli articoli, come la conta la nuvola; dalla casella di ricerca trova
   // anche pezzi di parola e guarda pure titolo e data. In entrambi i casi le
   // uscite arrivano ordinate da quella in cui il testo compare più volte.
+  // ---------- etichette ----------
+
+  let tagFilter = '';   // etichetta scelta nella barra, in minuscolo ('' = nessuna)
+
+  function tagsCell(td, issue) {
+    td.className = 'tags';
+    td.innerHTML = '';
+    for (const t of issue.tags || []) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tag';
+      b.textContent = t;
+      b.title = `Mostra solo le uscite con l'etichetta «${t}»`;
+      b.setAttribute('aria-pressed', String(tagFilter === t.toLowerCase()));
+      b.addEventListener('click', () => setTagFilter(t.toLowerCase()));
+      td.appendChild(b);
+    }
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'tag-edit';
+    edit.textContent = '🏷️';
+    edit.title = issue.tags && issue.tags.length ? 'Modifica le etichette' : 'Aggiungi etichette';
+    edit.setAttribute('aria-label', `${edit.title} dell'uscita #${issue.id}`);
+    edit.addEventListener('click', () => editTags(td, issue));
+    td.appendChild(edit);
+  }
+
+  // Modifica sul posto: Invio salva, Esc annulla, uscendo dal campo salva.
+  function editTags(td, issue) {
+    td.innerHTML = '';
+    const input = document.createElement('input');
+    input.value = (issue.tags || []).join(', ');
+    input.setAttribute('list', 'tagList');
+    input.setAttribute('aria-label', `Etichette dell'uscita #${issue.id}, separate da virgole`);
+    input.placeholder = 'satira, inchiesta…';
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = 'Separate da virgole · Invio salva · Esc annulla';
+    td.append(input, hint);
+    input.focus();
+    let finito = false;
+    const chiudi = async salva => {
+      if (finito) return;
+      finito = true;
+      if (salva) {
+        try {
+          const r = await postJson('api/issue_tags.php', { id: issue.id, tags: input.value });
+          for (const i of allIssues) if (i.id === issue.id) i.tags = r.tags;
+          issue.tags = r.tags;
+        } catch (e) { alert('Etichette non salvate: ' + e.message); }
+      }
+      renderTagBar();
+      tagsCell(td, issue);
+      // un'uscita che non ha più l'etichetta filtrata esce dall'elenco
+      if (salva && tagFilter) refreshTable();
+    };
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); chiudi(true); }
+      if (e.key === 'Escape') { e.preventDefault(); chiudi(false); }
+    });
+    input.addEventListener('blur', () => chiudi(true));
+  }
+
+  // Barra delle etichette: tutte quelle in archivio, con quante uscite le usano.
+  function renderTagBar() {
+    const conta = new Map();
+    for (const i of allIssues) {
+      for (const t of i.tags || []) {
+        const k = t.toLowerCase();
+        if (!conta.has(k)) conta.set(k, { nome: t, n: 0 });
+        conta.get(k).n++;
+      }
+    }
+    if (tagFilter && !conta.has(tagFilter)) tagFilter = '';
+    const voci = [...conta.entries()].sort((a, b) => a[1].nome.localeCompare(b[1].nome, 'it'));
+    $('tagBar').hidden = voci.length === 0;
+    const span = $('tagSpan');
+    span.innerHTML = '';
+    $('tagList').innerHTML = '';
+    for (const [k, { nome, n }] of voci) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tag';
+      b.textContent = `${nome} (${n})`;
+      b.setAttribute('aria-pressed', String(tagFilter === k));
+      b.title = tagFilter === k ? 'Togli il filtro' : `Mostra solo le uscite con l'etichetta «${nome}»`;
+      b.addEventListener('click', () => setTagFilter(tagFilter === k ? '' : k));
+      span.appendChild(b);
+      $('tagList').appendChild(new Option(nome));
+    }
+  }
+
+  function setTagFilter(k) {
+    tagFilter = k;
+    renderTagBar();
+    search(lastWholeWord);
+  }
+
   let lastWholeWord = false;
   async function search(wholeWord = false) {
     lastWholeWord = wholeWord === true;
@@ -375,14 +487,17 @@
       catch (e) { alert('Ricerca non riuscita: ' + e.message); return; }
     }
     if (titleFilter) filtered = filtered.filter(i => (i.title || '').toLowerCase().includes(titleFilter));
+    if (tagFilter) filtered = filtered.filter(i => (i.tags || []).some(t => t.toLowerCase() === tagFilter));
     for (const b of document.querySelectorAll('button.keyword')) {
       b.setAttribute('aria-pressed', String(wholeWord === true && b.dataset.word === keyword));
     }
     const info = $('filterInfo');
-    info.hidden = !keyword && !titleFilter;
+    info.hidden = !keyword && !titleFilter && !tagFilter;
     if (!info.hidden) {
+      const nomeTag = tagFilter && ((allIssues.flatMap(i => i.tags || []).find(t => t.toLowerCase() === tagFilter)) || tagFilter);
       const cosa = [keyword && `«${keyword}»${wholeWord === true ? ' (parola intera, negli articoli)' : ''}`,
-                    titleFilter && `titolo con «${$('searchTitle').value}»`].filter(Boolean).join(' e ');
+                    titleFilter && `titolo con «${$('searchTitle').value}»`,
+                    tagFilter && `etichetta «${nomeTag}»`].filter(Boolean).join(' e ');
       info.textContent = `${filtered.length} ${filtered.length === 1 ? 'uscita' : 'uscite'} per ${cosa}` +
         (keyword ? ', dalla più ricca di occorrenze. ' : '. ');
       const all = document.createElement('button');
@@ -405,6 +520,8 @@
   function resetSearch() {
     $('searchTitle').value = '';
     $('searchKeyword').value = '';
+    tagFilter = '';
+    renderTagBar();
     $('filterInfo').hidden = true;
     for (const b of document.querySelectorAll('button.keyword')) b.setAttribute('aria-pressed', 'false');
     renderTable(allIssues);

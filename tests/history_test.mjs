@@ -106,6 +106,25 @@ verifica('l\'istantanea conserva uscita, titolo e stato di salvataggio', r.state
 verifica('ripeti torna all\'uscita aperta', h.redo(stato(r.state.content, r.state.issue)).state.issue.id === 7);
 
 // ===================================================================
+sezione('Conservazione nella scheda');
+h = nuovo(); s = stato({ n: 0 }); orologio = 0;
+for (let i = 1; i <= 4; i++) modifica(h, s, `passo ${i}`, c => { c.n = i; });
+s = stato(h.undo(s).state.content);
+const salvata = JSON.parse(JSON.stringify(h.dump()));   // come passa da sessionStorage
+let h2 = nuovo();
+verifica('una cronologia salvata si riprende identica', h2.load(salvata) && JSON.stringify(h2.size()) === '{"undo":3,"redo":1}');
+verifica('dopo la ripresa annulla funziona', h2.undo(s).state.content.n === 2);
+verifica('...e ripeti pure', nuovo().load(salvata) && (() => { const h3 = nuovo(); h3.load(salvata); return h3.redo(s).state.content.n === 4; })());
+verifica('dump con un massimo tiene solo gli ultimi passi', h.dump(2).undo.length === 2 && h.dump(2).undo[1].label === 'passo 3');
+verifica('dump(0) non tiene niente', h.dump(0).undo.length === 0 && h.dump(0).redo.length === 0);
+h2 = nuovo(); h2.load(salvata);
+const prima = JSON.stringify(h2.size());
+verifica('dati non validi vengono rifiutati senza toccare la cronologia',
+  [null, {}, { undo: 'x', redo: [] }, { undo: [{ label: 'a', state: { content: '{rotto' } }], redo: [] },
+   { undo: [{ label: 'a', state: {} }], redo: [] }].every(d => h2.load(d) === false) && JSON.stringify(h2.size()) === prima);
+verifica('la ripresa rispetta il limite di passi', (() => { const h4 = nuovo({ limit: 2 }); h4.load(salvata); return h4.size().undo === 2; })());
+
+// ===================================================================
 const totale = passati + falliti.length;
 console.log('\n' + '─'.repeat(60));
 if (falliti.length) {

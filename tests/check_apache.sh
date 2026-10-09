@@ -48,6 +48,7 @@ echo "── Autenticazione"
 atteso "l'editor chiede le credenziali"            ""                       no 401
 atteso "gli endpoint chiedono le credenziali"      "api/list_issues.php"    no 401
 atteso "gli script chiedono le credenziali"        "assets/render.js"       no 401
+atteso "l'anteprima del sito chiede le credenziali" "api/site_preview.php/index.html" no 401
 atteso "credenziali errate respinte"               ""                       errate 401
 atteso "con le credenziali l'editor si apre"       ""                       si 200
 atteso "con le credenziali l'archivio si apre"     "archivio.php"           si 200

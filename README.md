@@ -31,7 +31,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - Prima pagina classica (articolo a tutta larghezza, due colonne, riquadro, tre colonne di brevi, consiglio, piè di pagina) più **pagine interne** a 1–3 colonne, con il testo che scorre da una colonna all'altra
 - L'anteprima mostra ciò che stai scrivendo mentre lo scrivi, tratteggiato finché non lo aggiungi
 - Articoli spostabili trascinandoli, anche fra colonne e pagine diverse
-- **Annulla e ripeti** (pulsanti o Ctrl+Z / Ctrl+Y) per ogni modifica al numero: articoli aggiunti, modificati, eliminati o spostati, pagine, testata, perfino "ricomincia dal contenuto di esempio" e l'apertura di un'altra uscita. I tasti battuti di seguito nello stesso campo contano come un passo solo. La cronologia vive nella pagina: ricaricando riparte vuota
+- **Annulla e ripeti** (pulsanti o Ctrl+Z / Ctrl+Y) per ogni modifica al numero: articoli aggiunti, modificati, eliminati o spostati, pagine, testata, perfino "ricomincia dal contenuto di esempio" e l'apertura di un'altra uscita. I tasti battuti di seguito nello stesso campo contano come un passo solo. La cronologia resta nella scheda del browser: sopravvive al ricaricamento e sparisce chiudendola
 - Testo in **Markdown essenziale** (`**grassetto**`, `*corsivo*`, `[link](https://…)`, riga vuota = nuovo paragrafo), con barra dei comandi. L'HTML scritto a mano viene filtrato: restano solo i tag di formattazione
 - Testata configurabile dall'interfaccia: nome a due colori, motto, sottotitolo, contatto, prezzo, nota a piè di pagina, logo, titoli delle sezioni
 
@@ -47,6 +47,7 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 **Archivio**
 - Ricerca nel testo degli articoli (lato server), con i risultati ordinati per numero di occorrenze; statistiche reali per uscita
 - Nuvola delle parole più frequenti: un clic su una parola mostra le uscite in cui ricorre, dalla più ricca di occorrenze
+- **Etichette** per le uscite (rubriche, temi): si scrivono direttamente nella tabella, un clic filtra l'archivio, e compaiono nell'indice del sito pubblico. Modificarle non rende "da aggiornare" un'uscita già pubblicata
 - **Cronologia delle versioni**: ogni aggiornamento conserva la versione precedente, ripristinabile
 - "Nuovo numero da questo": duplica un'uscita incrementando il numero
 - Bozza di lavoro salvata sul server, non solo nel browser
@@ -54,7 +55,8 @@ Self-hosted e senza dipendenze: PHP + SQLite lato server, HTML/CSS/JS puro lato 
 - Backup completo in un .zip e ripristino non distruttivo; pulizia delle immagini non più usate
 
 **Pubblicazione**
-- Le uscite scelte formano un **sito statico da scaricare** (indice, una pagina per uscita, feed RSS, robots.txt), da caricare su qualunque hosting statico o servizio onion
+- Le uscite scelte formano un **sito statico da scaricare** (indice, una pagina per uscita, feed RSS, robots.txt), da caricare su qualunque hosting statico o servizio onion. L'indice raggruppa le uscite anche per etichetta, e il feed riporta le etichette come categorie
+- **Anteprima del sito** prima di scaricarlo: indice, pagine e immagini esattamente come nello zip, dietro lo stesso login dell'editor
 - Pagine blindate: una Content-Security-Policy impedisce a chi legge di contattare qualunque sito terzo; niente script, niente referrer, date senza orario
 - Pagine leggere: le immagini diventano file separati (una sola copia per quelle ripetute, come il logo), le foto vengono ridotte per lo schermo e caricate solo quando servono
 - Indirizzi email protetti dai programmi che li raccolgono per lo spam, senza script: chi legge li vede e li copia normalmente
@@ -182,9 +184,9 @@ bash tests/run.sh
 
 Esegue tutti i test su una **copia temporanea** dell'app, con un database vuoto e un server PHP di prova: il sito, il suo database e le immagini caricate non vengono mai toccati, e la copia viene eliminata alla fine. Esce con codice 0 se è tutto superato.
 
-- `tests/api_test.php` verifica il backend via HTTP: uscite e statistiche, cronologia e conflitti, ricerca con occorrenze e parole intere, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione, pacchetto del sito e feed, backup e ripristino, compresi backup ostili e zip-slip.
+- `tests/api_test.php` verifica il backend via HTTP: migrazioni, uscite e statistiche, etichette, cronologia e conflitti, ricerca con occorrenze e parole intere, bozza e impostazioni, rimozione dei metadati dalle immagini (con un JPEG che contiene davvero coordinate GPS), pulizia, pubblicazione, pacchetto del sito e feed, anteprima del sito, backup e ripristino, compresi backup ostili e zip-slip.
 - `tests/render_test.mjs` verifica il motore di impaginazione con Node: Markdown, normalizzazione, testata, pagine, immagini, adattamento all'A4, protezione degli indirizzi email, ordine del libretto, filtro dell'HTML in ogni campo di testo. Se Node manca viene saltato.
-- `tests/history_test.mjs` verifica annulla e ripeti, sempre con Node: passi, limite della cronologia, modifiche che non cambiano nulla, tasti raggruppati, ritorno all'uscita aperta prima.
+- `tests/history_test.mjs` verifica annulla e ripeti, sempre con Node: passi, limite della cronologia, modifiche che non cambiano nulla, tasti raggruppati, ritorno all'uscita aperta prima, conservazione e ripresa della cronologia.
 
 Il server di prova gira apposta in un fuso orario lontano da UTC, così un errore legato all'ora locale non passa inosservato. Servono le estensioni PHP dell'app più `exif`, usata per controllare i metadati.
 
@@ -207,7 +209,7 @@ Controlla autenticazione, file che non devono mai essere serviti (database, `.ht
 | `assets/images.js` | Preparazione delle immagini nel browser e retinature |
 | `assets/history.js` | Annulla e ripeti dell'editor |
 | `api/lib.php` | Funzioni condivise: database, migrazioni automatiche, testo, statistiche, immagini |
-| `api/*.php` | Endpoint JSON: uscite, ricerca, parole chiave, revisioni, bozza, impostazioni, immagini, backup, pubblicazione |
+| `api/*.php` | Endpoint JSON: uscite, etichette, ricerca, parole chiave, revisioni, bozza, impostazioni, immagini, backup, pubblicazione e anteprima del sito |
 | `uploads/` | Immagini caricate |
 | `tests/` | Test automatici (non raggiungibili via web) |
 

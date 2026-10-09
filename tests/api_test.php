@@ -44,7 +44,12 @@ function http(string $metodo, string $percorso, ?string $corpo = null, array $in
         if (preg_match('#^HTTP/\S+\s+(\d{3})#', $h, $m)) $status = (int) $m[1];
     }
     $body = $body === false ? '' : $body;
-    return ['status' => $status, 'body' => $body, 'json' => json_decode($body, true)];
+    return ['status' => $status, 'body' => $body, 'json' => json_decode($body, true), 'headers' => $http_response_header ?? []];
+}
+
+function intestazione(array $r, string $nome): string {
+    foreach ($r['headers'] as $h) if (stripos($h, "$nome:") === 0) return trim(substr($h, strlen($nome) + 1));
+    return '';
 }
 
 function get(string $p): array { return http('GET', $p); }
@@ -198,7 +203,21 @@ sezione('Schema e migrazioni');
 $r = get('api/list_issues.php');
 verifica('il primo accesso crea il database e risponde con un archivio vuoto', $r['status'] === 200 && $r['json'] === [], $r['body']);
 $d = db();
-verifica('lo schema è alla versione attuale', (int) $d->querySingle('PRAGMA user_version') === 3);
+verifica('lo schema è alla versione attuale', (int) $d->querySingle('PRAGMA user_version') === 4);
+verifica('le uscite hanno la colonna delle etichette', (bool) $d->querySingle("SELECT 1 FROM pragma_table_info('issues') WHERE name = 'tags'"));
+// Un database della versione 3, con un'uscita già salvata, va aggiornato senza perdere nulla.
+$vecchio = tempnam(sys_get_temp_dir(), 'ezv3');
+$v3 = new SQLite3($vecchio);
+$v3->exec("CREATE TABLE issues (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, date TEXT, data TEXT, content TEXT,
+           created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+           char_count INTEGER, word_count INTEGER, size_kb REAL);
+           INSERT INTO issues (title, content) VALUES ('Vecchia', '{}'); PRAGMA user_version = 3;");
+$v3->close();
+$esitoMigrazione = shell_exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg(
+    'require ' . var_export("$APP/api/lib.php", true) . '; $d = new SQLite3(' . var_export($vecchio, true) . '); ezine_migra($d);'
+    . 'echo $d->querySingle("PRAGMA user_version"), "|", $d->querySingle("SELECT title || tags FROM issues");') . ' 2>&1');
+unlink($vecchio);
+verifica('la migrazione dalla versione 3 aggiunge le etichette alle uscite esistenti', $esitoMigrazione === '4|Vecchia[]', (string) $esitoMigrazione);
 foreach (['issues', 'issue_revisions', 'settings', 'drafts', 'publications'] as $t) {
     verifica("esiste la tabella $t", (bool) $d->querySingle("SELECT 1 FROM sqlite_master WHERE type='table' AND name='$t'"));
 }
@@ -298,6 +317,25 @@ verifica('la nuvola contiene le parole scritte', in_array('perché', $parole, tr
 verifica('la nuvola non contiene nomi di campi', !array_intersect($parole, ['text', 'title', 'kicker', 'header', 'article', 'type', 'image']));
 
 // ===================================================================
+sezione('Etichette');
+$primaTag = db()->querySingle("SELECT updated_at FROM issues WHERE id = $id");
+$r = post_json('api/issue_tags.php', ['id' => $id, 'tags' => [' Inchiesta ', 'inchiesta', '<b>Satira</b>', 'Onde   pirata', '', 42]]);
+verifica('salva le etichette ripulite: spazi, doppioni, tag HTML, valori non testuali', ($r['json']['tags'] ?? null) === ['Inchiesta', 'Satira', 'Onde pirata'], $r['body']);
+verifica('le etichette non cambiano la data dell\'ultima modifica', db()->querySingle("SELECT updated_at FROM issues WHERE id = $id") === $primaTag);
+$riga = array_values(array_filter(get('api/list_issues.php')['json'], fn($u) => $u['id'] === $id))[0] ?? [];
+verifica('l\'elenco restituisce le etichette come array', ($riga['tags'] ?? null) === ['Inchiesta', 'Satira', 'Onde pirata'], json_encode($riga['tags'] ?? null));
+$trovata = array_values(array_filter(get('api/search_issues.php?q=' . rawurlencode('perché'))['json'], fn($u) => $u['id'] === $id))[0] ?? [];
+verifica('anche la ricerca', ($trovata['tags'] ?? null) === ['Inchiesta', 'Satira', 'Onde pirata']);
+$r = post_json('api/issue_tags.php', ['id' => $id, 'tags' => 'uno, due,' . str_repeat('x', 50) . ',4,5,6,7,8,9,10']);
+verifica('accetta anche un testo separato da virgole, con limiti di numero e lunghezza',
+    count($r['json']['tags'] ?? []) === 8 && mb_strlen($r['json']['tags'][2]) === 30 && $r['json']['tags'][0] === 'uno', $r['body']);
+verifica('etichette di un\'uscita inesistente → 404', post_json('api/issue_tags.php', ['id' => 999999, 'tags' => ['x']])['status'] === 404);
+verifica('id non valido → 400', post_json('api/issue_tags.php', ['id' => 'abc', 'tags' => ['x']])['status'] === 400);
+verifica('metodo non ammesso → 405', get('api/issue_tags.php')['status'] === 405);
+post_json('api/issue_tags.php', ['id' => $id, 'tags' => []]);
+verifica('si possono togliere tutte', (array_values(array_filter(get('api/list_issues.php')['json'], fn($u) => $u['id'] === $id))[0]['tags'] ?? null) === []);
+
+// ===================================================================
 sezione('Bozza e impostazioni');
 verifica('bozza assente all\'inizio', get('api/draft.php')['json']['payload'] === null);
 $r = post_json('api/draft.php', ['payload' => ['content' => contenuto(), 'issue' => ['id' => $id], 'savedAt' => 'x']]);
@@ -362,6 +400,8 @@ sezione('Pubblicazione');
 $pagina = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Uscita</title></head><body style="margin:0">'
         . '<div class="newspaper"><img src="data:image/png;base64,AAAA" onerror="alert(1)"><p>Testo pubblicato</p></div></body></html>';
 verifica('pacchetto senza uscite pubblicate → 404', get('api/site_package.php')['status'] === 404);
+$r = get('api/site_preview.php/index.html');
+verifica('anteprima senza uscite pubblicate → 404 con una spiegazione', $r['status'] === 404 && str_contains($r['body'], 'Nessuna uscita pubblicata'));
 verifica('pubblicare HTML non riconosciuto → 400', post_json('api/publish.php', ['issue_id' => $id, 'html' => '<script>x</script>'])['status'] === 400);
 verifica('pubblicare un\'uscita inesistente → 404', post_json('api/publish.php', ['issue_id' => 999999, 'html' => $pagina])['status'] === 404);
 $r = post_json('api/publish.php', ['issue_id' => $id, 'html' => $pagina]);
@@ -392,6 +432,53 @@ for ($i = 0; $i < $z->numFiles; $i++) $nomi[] = $z->getNameIndex($i);
 foreach (['sito/index.html', 'sito/robots.txt', 'sito/LEGGIMI.txt', 'sito/feed.xml', "sito/$slug.html"] as $atteso) {
     verifica("il pacchetto contiene $atteso", in_array($atteso, $nomi, true));
 }
+
+// --- etichette nell'indice e nel feed ---
+post_json('api/issue_tags.php', ['id' => $id, 'tags' => ['Satira', 'Città']]);
+post_json('api/issue_tags.php', ['id' => $idImg, 'tags' => ['satira']]);
+$z2 = zip_da(get('api/site_package.php')['body']);
+$indiceTag = (string) $z2->getFromName('sito/index.html');
+verifica('l\'indice mostra le etichette di ogni uscita, collegate alla loro sezione',
+    str_contains($indiceTag, '<span class="tags"><a href="#etichetta-satira">Satira</a><a href="#etichetta-citta">Città</a></span>'), $indiceTag);
+verifica('le etichette che differiscono solo per le maiuscole finiscono nella stessa sezione',
+    substr_count($indiceTag, 'id="etichetta-satira"') === 1 && preg_match('#<h3>satira <span>\(2\)</span></h3>#i', $indiceTag) === 1);
+verifica('le sezioni sono in ordine alfabetico, senza badare agli accenti',
+    strpos($indiceTag, 'id="etichetta-citta"') < strpos($indiceTag, 'id="etichetta-satira"'));
+$feedTag = (string) $z2->getFromName('sito/feed.xml');
+verifica('il feed riporta le etichette come categorie', str_contains($feedTag, '<category>Satira</category><category>Città</category>'));
+verifica('le etichette non rendono "da aggiornare" un\'uscita pubblicata', ($stato($id)['stale'] ?? null) === false);
+
+// --- anteprima del sito, pagina per pagina ---
+$r = get('api/site_preview.php/index.html');
+verifica('l\'anteprima mostra l\'indice identico a quello dello zip', $r['status'] === 200 && $r['body'] === $indiceTag);
+verifica('...con la Content-Security-Policy anche come intestazione',
+    str_contains(intestazione($r, 'Content-Security-Policy'), "default-src 'none'") && intestazione($r, 'Cache-Control') === 'no-store');
+$r = get("api/site_preview.php/$slug.html");
+verifica('l\'anteprima mostra le pagine delle uscite', $r['status'] === 200 && $r['body'] === $z2->getFromName("sito/$slug.html"));
+verifica('...e il feed', get('api/site_preview.php/feed.xml')['body'] === $feedTag);
+$r = get('api/site_preview.php');
+verifica('senza nome di file rimanda all\'indice', $r['status'] === 200 && $r['body'] === $indiceTag);
+// I percorsi con "../" li risolve già il server web, prima di chiamare
+// l'anteprima (e Apache blocca api/lib.php): qui arrivano i nomi semplici.
+foreach (['.htaccess', '..ezine.db', 'img/.htaccess', 'ezine.db', 'lib.php', 'inesistente.html', 'img/x.php'] as $cattivo) {
+    $r = get('api/site_preview.php/' . $cattivo);
+    verifica('l\'anteprima non serve «' . rawurldecode($cattivo) . '»', $r['status'] === 404 && str_contains($r['body'], 'File non trovato'), $r['status'] . ' ' . substr($r['body'], 0, 80));
+}
+$cartelleAnteprima = glob(sys_get_temp_dir() . '/ezine-anteprima-' . substr(sha1(realpath($APP)), 0, 10) . '/*', GLOB_ONLYDIR) ?: [];
+verifica('l\'anteprima costruita resta in una sola cartella temporanea', count($cartelleAnteprima) === 1, implode(', ', $cartelleAnteprima));
+$mtimeAnteprima = $cartelleAnteprima ? filemtime($cartelleAnteprima[0]) : 0;
+get('api/site_preview.php/index.html');
+clearstatcache();
+verifica('richieste successive la riusano senza ricostruirla', $cartelleAnteprima && is_dir($cartelleAnteprima[0]) && filemtime($cartelleAnteprima[0]) === $mtimeAnteprima);
+post_json('api/issue_tags.php', ['id' => $id, 'tags' => ['Nuova etichetta']]);
+$r = get('api/site_preview.php/index.html');
+verifica('cambiando le etichette l\'anteprima si aggiorna', str_contains($r['body'], '>Nuova etichetta</a>'));
+clearstatcache();
+$cartelleDopo = glob(sys_get_temp_dir() . '/ezine-anteprima-' . substr(sha1(realpath($APP)), 0, 10) . '/*', GLOB_ONLYDIR) ?: [];
+verifica('...e quella superata viene eliminata', count($cartelleDopo) === 1 && $cartelleDopo !== $cartelleAnteprima);
+post_json('api/issue_tags.php', ['id' => $id, 'tags' => []]);
+post_json('api/issue_tags.php', ['id' => $idImg, 'tags' => []]);
+
 $tutteBlindate = true; $dettaglio = '';
 foreach ($nomi as $n) {
     if (!str_ends_with($n, '.html')) continue;
@@ -477,6 +564,10 @@ verifica('le fotografie oltre i 1600 px vengono ridotte', max($dimFoto[0], $dimF
 verifica('...e pesano meno dell\'originale', $foto !== '' && strlen($foto) < strlen($jpgGrande), round(strlen($foto) / 1024) . ' KB contro ' . round(strlen($jpgGrande) / 1024) . ' KB');
 verifica('...senza metadati né commenti', $foto !== '' && !str_contains($foto, 'gd-jpeg'));
 verifica('i PNG retinati restano identici, pixel per pixel', in_array($pngRetinato, $img, true));
+$primaImg = array_key_first($img);
+$r = get('api/site_preview.php/' . substr((string) $primaImg, strlen('sito/')));
+verifica('l\'anteprima serve anche le immagini del sito, con il tipo giusto',
+    $r['status'] === 200 && $r['body'] === $img[$primaImg] && str_starts_with(intestazione($r, 'Content-Type'), 'image/'), (string) $primaImg);
 verifica('le immagini degli articoli hanno dimensioni dichiarate e caricamento differito',
     preg_match('#<img class="article-img img-baked" src="img/[a-f0-9]{20}\.png" width="300" height="200" loading="lazy"#', $pag) === 1);
 verifica('il logo si carica subito, senza caricamento differito', preg_match('#<img class="header-logo" src="img/[a-f0-9]{20}\.png" alt="">#', $pag) === 1);
@@ -502,12 +593,15 @@ $r = post_file('api/restore_backup.php', 'backup', 'b.zip', 'application/zip', $
 verifica('ripristinare lo stesso backup non crea doppioni', $r['status'] === 200 && $r['json']['issues_imported'] === 0 && $r['json']['issues_skipped'] > 0, $r['body']);
 
 $nRevPrima = count(get("api/revisions.php?issue_id=$id")['json']);
+post_json('api/issue_tags.php', ['id' => $id, 'tags' => ['Da ritrovare']]);
+$bk = get('api/backup.php')['body'];
 post_json('api/delete_issue.php', ['id' => $id]);
 verifica('eliminando un\'uscita pubblicata si elimina la pubblicazione', (int) db()->querySingle("SELECT count(*) FROM publications WHERE issue_id = $id") === 0);
 $r = post_file('api/restore_backup.php', 'backup', 'b.zip', 'application/zip', $bk);
 verifica('dopo un\'eliminazione il ripristino recupera l\'uscita', $r['status'] === 200 && $r['json']['issues_imported'] === 1, $r['body']);
 verifica('...con la sua cronologia', ($r['json']['revisions_imported'] ?? 0) === $nRevPrima, "importate {$r['json']['revisions_imported']} su $nRevPrima");
 verifica('...e la sua pubblicazione', ($r['json']['publications_imported'] ?? 0) === 1);
+verifica('...e le sue etichette', (int) db()->querySingle("SELECT count(*) FROM issues WHERE tags = '[\"Da ritrovare\"]'") === 1);
 
 $f = tempnam(sys_get_temp_dir(), 'ezev');
 $zz = new ZipArchive(); $zz->open($f, ZipArchive::OVERWRITE);

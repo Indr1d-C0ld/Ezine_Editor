@@ -2,7 +2,7 @@
 // lib.php – funzioni condivise dagli endpoint in api/.
 // Non va mai richiesto direttamente: è bloccato da api/.htaccess.
 
-const EZINE_SCHEMA_VERSION = 3;
+const EZINE_SCHEMA_VERSION = 4;
 
 // Campi che contengono testo scritto davvero dall'autore. Tutto il resto del
 // contenuto (nomi dei campi, valori di servizio come "normal"/"none", percorsi
@@ -78,6 +78,12 @@ function ezine_migra(SQLite3 $db): void {
             published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             source_updated_at TEXT
         )");
+    }
+    if ($versione < 4) {
+        // Etichette (rubriche, temi) di ogni uscita, come array JSON. Sono dati
+        // d'archivio: modificarle non cambia la data dell'ultima modifica né
+        // rende "da aggiornare" un'uscita già pubblicata.
+        $db->exec("ALTER TABLE issues ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'");
     }
     $db->exec('PRAGMA user_version = ' . EZINE_SCHEMA_VERSION);
     $db->exec('COMMIT');
@@ -158,7 +164,35 @@ function ezine_statistiche($contenuto): array {
 // ---------- uscite ----------
 
 function ezine_colonne_elenco(): string {
-    return 'id, title, data, created_at, updated_at, char_count, word_count, size_kb';
+    return 'id, title, data, created_at, updated_at, char_count, word_count, size_kb, tags';
+}
+
+// Una riga dell'elenco pronta per il JSON: le etichette come array.
+function ezine_riga_elenco(array $row): array {
+    $row['tags'] = ezine_etichette(json_decode($row['tags'] ?? '[]', true));
+    return $row;
+}
+
+// Etichette ripulite: testo semplice, al massimo 8 da 30 caratteri, senza
+// doppioni (anche se scritti con maiuscole diverse). Accetta un array o un
+// testo separato da virgole.
+const EZINE_MAX_ETICHETTE = 8;
+const EZINE_MAX_LUNGHEZZA_ETICHETTA = 30;
+
+function ezine_etichette($valore): array {
+    if (is_string($valore)) $valore = explode(',', $valore);
+    if (!is_array($valore)) return [];
+    $out = [];
+    foreach ($valore as $t) {
+        if (!is_string($t)) continue;
+        $t = preg_replace(['/<[^>]*>/u', '/[\p{C}<>"]+/u'], '', $t) ?? '';   // tag, controlli, < > " sciolti
+        $t = trim(preg_replace('/\s+/u', ' ', $t));
+        $t = trim(mb_substr($t, 0, EZINE_MAX_LUNGHEZZA_ETICHETTA));
+        if ($t === '' || isset($out[mb_strtolower($t)])) continue;
+        $out[mb_strtolower($t)] = $t;
+        if (count($out) >= EZINE_MAX_ETICHETTE) break;
+    }
+    return array_values($out);
 }
 
 function ezine_salva_revisione(SQLite3 $db, int $issueId, string $motivo): void {

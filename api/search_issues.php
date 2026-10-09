@@ -25,7 +25,7 @@ while ($row = $r->fetchArray(SQLITE3_ASSOC)) {
     if ($n > 0) {
         unset($row['content']);
         $row['occorrenze'] = $n;
-        $trovati[] = $row;
+        $trovati[] = ezine_riga_elenco($row);
     }
 }
 // usort è stabile: a parità di occorrenze resta l'ordine per data della query

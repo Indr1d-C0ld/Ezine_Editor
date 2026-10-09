@@ -44,8 +44,8 @@ foreach ($immagini as $nome => $indice) {
 $db = ezine_db();
 $db->exec('BEGIN IMMEDIATE');
 $esiste = $db->prepare('SELECT 1 FROM issues WHERE title IS :t AND content IS :c LIMIT 1');
-$ins = $db->prepare('INSERT INTO issues (title, date, data, content, created_at, updated_at, char_count, word_count, size_kb)
-                     VALUES (:title, :date, :data, :content, :created, :updated, :c, :w, :kb)');
+$ins = $db->prepare('INSERT INTO issues (title, date, data, content, created_at, updated_at, char_count, word_count, size_kb, tags)
+                     VALUES (:title, :date, :data, :content, :created, :updated, :c, :w, :kb, :tags)');
 $mappaId = [];
 foreach ($dati['issues'] ?? [] as $u) {
     if (!is_array($u) || !isset($u['content'])) continue;
@@ -64,6 +64,8 @@ foreach ($dati['issues'] ?? [] as $u) {
     $ins->bindValue(':c', $s['chars'], SQLITE3_INTEGER);
     $ins->bindValue(':w', $s['words'], SQLITE3_INTEGER);
     $ins->bindValue(':kb', round(strlen($u['content']) / 1024, 2), SQLITE3_FLOAT);
+    // i backup fatti prima delle etichette non hanno il campo
+    $ins->bindValue(':tags', json_encode(ezine_etichette(json_decode((string) ($u['tags'] ?? '[]'), true)), JSON_UNESCAPED_UNICODE), SQLITE3_TEXT);
     $ins->execute();
     $ins->reset();
     if (isset($u['id'])) $mappaId[$u['id']] = $db->lastInsertRowID();
